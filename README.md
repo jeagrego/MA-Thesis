@@ -1,59 +1,72 @@
-# Fairness in Bandit Settings on COMPAS
+# Assessing Fairness in Decision-Making Algorithms for Contextual Bandit Problems
+## Author : Jean-Nicolas Grégoire
+## Promoter : Professor Tom Lenaerts
 
-This repository contains the notebook used for my master's thesis experiments on fairness in bandit settings.  
-The goal is to compare a standard contextual bandit approach with a fairness-aware variant, and to benchmark them against supervised baselines on the COMPAS dataset.
+This repository contains the code and notebooks used for my master's thesis on fairness in contextual bandits. It provides reusable Python modules for dataset preparation, policy implementations, experiment runners, metrics, plotting, and the notebooks used to reproduce the thesis experiments and figures.
 
-## Main idea
+## Repository Layout
 
-The notebook studies the trade-off between predictive utility and group fairness.  
-The main methods compared are:
+- [src/fair_bandits](src/fair_bandits) contains the reusable library code.
+- [notebooks](notebooks) contains the thesis notebooks for Adult, COMPAS, synthetic CMAB, postprocessing, benchmark comparisons, and final figures.
+- [notebooks/results](notebooks/results) stores generated CSV and PNG outputs from notebook runs.
+- [requirement.txt](requirement.txt) lists the project dependencies.
 
-- **LinUCB**
-- **FairLinUCB_DP_GroupAware**
-- **Logistic Regression**
-- **Random Forest**
-- **FairLinUCB_DP_GroupAware_PostProc** (main addition for the thesis: postprocessed version with group-specific thresholds)
+## What The Project Studies
 
-## Main metrics
+The experiments study the trade-off between predictive utility and group fairness in contextual bandit settings. The repository compares standard and fairness-aware policies across multiple benchmarks, including Adult, COMPAS, and synthetic CMAB environments.
 
-The experiments report:
+## Policies And Baselines
+
+The codebase currently includes these policy families:
+
+- LinUCB
+- GroupAwareDPLinUCB / FairLinUCB_DP_GroupAware
+- LinearThompsonSampling
+- GroupAwareDPLinearThompsonSampling / FairLinearThompsonSampling_DP_GroupAware
+- EXP4
+- GroupAwareDPEXP4 / FairEXP4_DP
+- supervised baselines used in the benchmark notebooks
+
+## Metrics
+
+Utility and performance:
 
 - Accuracy
+- Utility gap
+- Cumulative regret
+
+### Fairness metrics:
 - Demographic Parity gap (`DP_gap`)
 - True Positive Rate gap (`TPR_gap`)
 - False Positive Rate gap (`FPR_gap`)
 - Equalized Odds gap (`EO_gap`)
 - Positive Predictive Value gap (`PPV_gap`)
-- Utility gap
-- Cumulative regret
 
-## Notebook content
+## Notebook Set
 
-The notebook contains four main parts:
+The notebooks in this repository cover:
 
-1. **Quick temporal CMAB experiment**  
-   Used mainly for diagnostic temporal plots.
+1. Adult experiments
+2. COMPAS experiments
+3. COMPAS postprocessing
+4. COMPAS snapshot benchmark
+5. Synthetic CMAB experiments
+6. Final figures and statistical summaries
 
-2. **Unified snapshot benchmark**  
-   Comparison of LinUCB, FairLinUCB, Logistic Regression, and Random Forest across several horizons.
+The synthetic CMAB notebook includes multiple regimes, horizon sweeps, per-seed summaries, confidence intervals, and statistical tests.
 
-3. **Postprocessing benchmark**  
-   Evaluation of a postprocessed fairness-aware bandit using group-specific thresholds learned on a calibration split.
+## Statistical Analysis
 
-4. **Statistical testing and final tables**  
-   Friedman omnibus tests, pairwise Wilcoxon tests, Holm correction, and final summary tables.
+The experiment workflow includes Friedman omnibus tests, pairwise Wilcoxon tests, and Holm correction for multiple comparisons.
 
-## Important note
+## Requirements
 
-The **main reported thesis results** are the snapshot benchmark and the postprocessing benchmark.  
-The quick temporal plots are exploratory/diagnostic and are not the main quantitative comparison.
-
-
-## Required environment
-
-Recommended Python version: **3.10+**
+Python 3.11 or newer is recommended.
 
 Install dependencies with:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirement.txt
+```
+
+If you are working from the source package directly, the code lives under [src/fair_bandits](src/fair_bandits).

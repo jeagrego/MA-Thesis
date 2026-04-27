@@ -1,0 +1,43 @@
+from .runner import (
+    ExperimentBundle,
+    run_bandit_on_index_sequence,
+    run_multi_seed_bandit_experiment,
+    sample_idx_seq,
+    summarize_over_seeds,
+    summarize_seed_runs,
+)
+from .statistics import (
+    compare_methods,
+    friedman_test,
+    holm_correction,
+    pairwise_wilcoxon,
+)
+from .synthetic_runner import (
+    replay_bandit_on_synthetic_env,
+    replay_exp4_on_synthetic_env,
+    summarize_synth_logs,
+    run_synth_benchmark,
+    run_regime_matched_synth_benchmark,
+    make_synth_temporal_ci,
+    make_synth_summary_table,
+)
+
+__all__ = [
+    "ExperimentBundle",
+    "sample_idx_seq",
+    "run_bandit_on_index_sequence",
+    "run_multi_seed_bandit_experiment",
+    "summarize_seed_runs",
+    "summarize_over_seeds",
+    "holm_correction",
+    "friedman_test",
+    "pairwise_wilcoxon",
+    "compare_methods",
+    "replay_bandit_on_synthetic_env",
+    "summarize_synth_logs",
+    "run_synth_benchmark",
+    "make_synth_temporal_ci",
+    "make_synth_summary_table",
+    "replay_exp4_on_synthetic_env",
+    "run_regime_matched_synth_benchmark",
+]
