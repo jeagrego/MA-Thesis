@@ -1,3 +1,4 @@
+# MASTER THESIS IN COMPUTER SCIENCE 
 # Assessing Fairness in Decision-Making Algorithms for Contextual Bandit Problems
 ## Author : Jean-Nicolas Grégoire
 ## Promoter : Professor Tom Lenaerts
@@ -68,5 +69,3 @@ Install dependencies with:
 ```bash
 pip install -r requirement.txt
 ```
-
-If you are working from the source package directly, the code lives under [src/fair_bandits](src/fair_bandits).
