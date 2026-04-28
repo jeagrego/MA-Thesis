@@ -1,0 +1,15 @@
+# Data artifacts
+*.csv
+*.json
+
+# Python packaging/build metadata
+*.egg-info/
+dist/
+build/
+
+# Jupyter metadata/cache
+.ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+*.py[cod]
