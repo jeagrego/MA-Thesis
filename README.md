@@ -1,6 +1,9 @@
-# MASTER THESIS IN COMPUTER SCIENCE 
-# Assessing Fairness in Decision-Making Algorithms for Contextual Bandit Problems
+# MASTER THESIS IN COMPUTER SCIENCE
+
+## Assessing Fairness in Decision-Making Algorithms for Contextual Bandit Problems
+
 ## Author : Jean-Nicolas Grégoire
+
 ## Promoter : Professor Tom Lenaerts
 
 This repository contains the code and notebooks used for my master's thesis on fairness in contextual bandits. It provides reusable Python modules for dataset preparation, policy implementations, experiment runners, metrics, plotting, and the notebooks used to reproduce the thesis experiments and figures.
@@ -36,7 +39,8 @@ Utility and performance:
 - Utility gap
 - Cumulative regret
 
-### Fairness metrics:
+### Fairness metrics
+
 - Demographic Parity gap (`DP_gap`)
 - True Positive Rate gap (`TPR_gap`)
 - False Positive Rate gap (`FPR_gap`)
