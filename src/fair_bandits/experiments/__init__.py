@@ -6,12 +6,14 @@ from .runner import (
     summarize_over_seeds,
     summarize_seed_runs,
 )
+
 from .statistics import (
     compare_methods,
     friedman_test,
     holm_correction,
     pairwise_wilcoxon,
 )
+
 from .synthetic_runner import (
     replay_bandit_on_synthetic_env,
     replay_exp4_on_synthetic_env,
@@ -20,6 +22,16 @@ from .synthetic_runner import (
     run_regime_matched_synth_benchmark,
     make_synth_temporal_ci,
     make_synth_summary_table,
+)
+
+from .compas_exp4_race_binary import (
+    ExpertPool,
+    train_expert_pool,
+    run_trajectory,
+    run_benchmark,
+    run_exp4_postprocessing_horizon_benchmark,
+    evaluate_fair_exp4_with_postprocessing,
+    read_csv_or_empty,
 )
 
 __all__ = [
@@ -40,4 +52,11 @@ __all__ = [
     "make_synth_summary_table",
     "replay_exp4_on_synthetic_env",
     "run_regime_matched_synth_benchmark",
+    "ExpertPool",
+    "train_expert_pool",
+    "run_trajectory",
+    "run_benchmark",
+    "read_csv_or_empty",
+    "run_exp4_postprocessing_horizon_benchmark",
+    "evaluate_fair_exp4_with_postprocessing",
 ]

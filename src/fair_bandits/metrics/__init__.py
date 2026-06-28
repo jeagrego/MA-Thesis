@@ -15,6 +15,8 @@ from .temporal import (
     aggregate_temporal_over_seeds,
 )
 
+from .classification_bandit import safe_gap, summarize_classification_bandit
+
 __all__ = [
     "safe_rate",
     "max_group_gap",

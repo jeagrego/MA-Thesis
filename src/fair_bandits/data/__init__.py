@@ -1,4 +1,9 @@
-from .adult import load_adult, prepare_adult_contextual, to_binary_income
+try:
+    from .adult import load_adult, prepare_adult_contextual, to_binary_income
+except ModuleNotFoundError:
+    load_adult = None
+    prepare_adult_contextual = None
+    to_binary_income = None
 from .compas import (
     load_compas,
     clean_compas_minimal,

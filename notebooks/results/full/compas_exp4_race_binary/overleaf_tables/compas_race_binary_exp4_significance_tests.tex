@@ -1,0 +1,42 @@
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Holm-corrected paired Wilcoxon signed-rank tests across seeds for the COMPAS race-binary EXP4 experiment. Online comparisons are evaluated at the final online endpoint. Post-processing comparisons are evaluated on the held-out test set.}
+\label{tab:compas_race_binary_exp4_significance_tests}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllllll}
+\toprule
+Comparison & Metric & Baseline & Intervention & Baseline value & Intervention value & Holm p & Sig. \\
+\midrule
+Preprocessing effect & DP gap & EXP4 | Uniform & EXP4 | Reweighing & 0.0850 $\pm$ 0.0063 & 0.0866 $\pm$ 0.0060 & 0.652 &  \\
+Preprocessing effect & EO gap & EXP4 | Uniform & EXP4 | Reweighing & 0.0841 $\pm$ 0.0089 & 0.0930 $\pm$ 0.0076 & <0.001 & * \\
+Preprocessing effect & UtilityGap & EXP4 | Uniform & EXP4 | Reweighing & 0.0071 $\pm$ 0.0047 & 0.0065 $\pm$ 0.0050 & 1.000 &  \\
+Preprocessing effect & Average reward & EXP4 | Uniform & EXP4 | Reweighing & 0.5696 $\pm$ 0.0024 & 0.5577 $\pm$ 0.0029 & <0.001 & * \\
+Preprocessing effect & Cumulative prediction error & EXP4 | Uniform & EXP4 | Reweighing & 12912.7200 $\pm$ 71.2830 & 13269.1200 $\pm$ 87.6239 & <0.001 & * \\
+Preprocessing effect & DP gap & FairEXP4 | Uniform & FairEXP4 | Reweighing & 0.0639 $\pm$ 0.0038 & 0.0648 $\pm$ 0.0035 & 0.652 &  \\
+Preprocessing effect & EO gap & FairEXP4 | Uniform & FairEXP4 | Reweighing & 0.0602 $\pm$ 0.0068 & 0.0696 $\pm$ 0.0047 & <0.001 & * \\
+Preprocessing effect & UtilityGap & FairEXP4 | Uniform & FairEXP4 | Reweighing & 0.0073 $\pm$ 0.0046 & 0.0049 $\pm$ 0.0031 & 0.053 &  \\
+Preprocessing effect & Average reward & FairEXP4 | Uniform & FairEXP4 | Reweighing & 0.5687 $\pm$ 0.0024 & 0.5582 $\pm$ 0.0030 & <0.001 & * \\
+Preprocessing effect & Cumulative prediction error & FairEXP4 | Uniform & FairEXP4 | Reweighing & 12937.7600 $\pm$ 70.8564 & 13255.0600 $\pm$ 89.6436 & <0.001 & * \\
+In-processing effect & DP gap & EXP4 | Uniform & FairEXP4 | Uniform & 0.0850 $\pm$ 0.0063 & 0.0639 $\pm$ 0.0038 & <0.001 & * \\
+In-processing effect & EO gap & EXP4 | Uniform & FairEXP4 | Uniform & 0.0841 $\pm$ 0.0089 & 0.0602 $\pm$ 0.0068 & <0.001 & * \\
+In-processing effect & UtilityGap & EXP4 | Uniform & FairEXP4 | Uniform & 0.0071 $\pm$ 0.0047 & 0.0073 $\pm$ 0.0046 & 1.000 &  \\
+In-processing effect & Average reward & EXP4 | Uniform & FairEXP4 | Uniform & 0.5696 $\pm$ 0.0024 & 0.5687 $\pm$ 0.0024 & <0.001 & * \\
+In-processing effect & Cumulative prediction error & EXP4 | Uniform & FairEXP4 | Uniform & 12912.7200 $\pm$ 71.2830 & 12937.7600 $\pm$ 70.8564 & <0.001 & * \\
+In-processing effect & DP gap & EXP4 | Reweighing & FairEXP4 | Reweighing & 0.0866 $\pm$ 0.0060 & 0.0648 $\pm$ 0.0035 & <0.001 & * \\
+In-processing effect & EO gap & EXP4 | Reweighing & FairEXP4 | Reweighing & 0.0930 $\pm$ 0.0076 & 0.0696 $\pm$ 0.0047 & <0.001 & * \\
+In-processing effect & UtilityGap & EXP4 | Reweighing & FairEXP4 | Reweighing & 0.0065 $\pm$ 0.0050 & 0.0049 $\pm$ 0.0031 & 0.094 &  \\
+In-processing effect & Average reward & EXP4 | Reweighing & FairEXP4 | Reweighing & 0.5577 $\pm$ 0.0029 & 0.5582 $\pm$ 0.0030 & <0.001 & * \\
+In-processing effect & Cumulative prediction error & EXP4 | Reweighing & FairEXP4 | Reweighing & 13269.1200 $\pm$ 87.6239 & 13255.0600 $\pm$ 89.6436 & <0.001 & * \\
+Post-processing effect & DP gap & FairEXP4 | Uniform & FairEXP4+PP | Uniform & 0.1763 $\pm$ 0.0118 & 0.0844 $\pm$ 0.0252 & <0.001 & * \\
+Post-processing effect & EO gap & FairEXP4 | Uniform & FairEXP4+PP | Uniform & 0.2242 $\pm$ 0.0102 & 0.1412 $\pm$ 0.0266 & <0.001 & * \\
+Post-processing effect & UtilityGap & FairEXP4 | Uniform & FairEXP4+PP | Uniform & 0.0276 $\pm$ 0.0045 & 0.0465 $\pm$ 0.0088 & <0.001 & * \\
+Post-processing effect & Average reward & FairEXP4 | Uniform & FairEXP4+PP | Uniform & 0.6686 $\pm$ 0.0014 & 0.6668 $\pm$ 0.0075 & 0.094 &  \\
+Post-processing effect & DP gap & FairEXP4 | Reweighing & FairEXP4+PP | Reweighing & 0.1731 $\pm$ 0.0123 & 0.0877 $\pm$ 0.0277 & <0.001 & * \\
+Post-processing effect & EO gap & FairEXP4 | Reweighing & FairEXP4+PP | Reweighing & 0.2213 $\pm$ 0.0103 & 0.1447 $\pm$ 0.0288 & <0.001 & * \\
+Post-processing effect & UtilityGap & FairEXP4 | Reweighing & FairEXP4+PP | Reweighing & 0.0283 $\pm$ 0.0047 & 0.0466 $\pm$ 0.0093 & <0.001 & * \\
+Post-processing effect & Average reward & FairEXP4 | Reweighing & FairEXP4+PP | Reweighing & 0.6687 $\pm$ 0.0011 & 0.6664 $\pm$ 0.0074 & 0.053 &  \\
+\bottomrule
+\end{tabular}
+}
+\end{table}

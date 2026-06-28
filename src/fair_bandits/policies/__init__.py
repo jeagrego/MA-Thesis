@@ -7,6 +7,7 @@ from .linear_ts import (
     FairLinearThompsonSampling_DP_GroupAware,
 )
 from .exp4 import EXP4, GroupAwareDPEXP4, FairEXP4_DP
+from .exp4_wrappers import EXP4Policy, FairEXP4Policy
 
 __all__ = [
     "BaseContextualPolicy",
