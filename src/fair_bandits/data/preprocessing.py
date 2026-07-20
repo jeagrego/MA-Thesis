@@ -97,3 +97,152 @@ def make_group_label_sampling_probs(group: np.ndarray, y: np.ndarray) -> np.ndar
 
     weights /= weights.sum()
     return weights
+
+def make_group_label_update_weights(
+    *,
+    groups: np.ndarray,
+    labels: np.ndarray,
+    label_name: str = "label",
+) -> tuple[np.ndarray, pd.DataFrame]:
+    """
+    Compute inverse-frequency update weights for each group-label stratum.
+
+    The returned weights have mean 1. This is important for online bandit replay:
+    reweighing changes the relative importance of observations without changing
+    the overall update scale.
+
+    groups:
+        Sensitive group observed at each round.
+
+    labels:
+        Label used to define the strata. In the synthetic CMAB benchmark this is
+        usually the oracle action.
+
+    label_name:
+        Name used for the label column in the support table.
+
+    Returns
+    weights:
+        One update weight per observation.
+
+    support:
+        Compact table with stratum counts and weights.
+    """
+    groups = np.asarray(groups).astype(str)
+    labels = np.asarray(labels, dtype=int)
+
+    if len(groups) != len(labels):
+        raise ValueError("groups and labels must have the same length.")
+
+    support = (
+        pd.DataFrame(
+            {
+                "group": groups,
+                label_name: labels,
+            }
+        )
+        .value_counts(["group", label_name])
+        .rename("n")
+        .reset_index()
+    )
+
+    n_total = int(support["n"].sum())
+    n_cells = int(len(support))
+
+    support["raw_weight"] = n_total / (n_cells * support["n"])
+
+    lookup = {
+        (str(row["group"]), int(row[label_name])): float(row["raw_weight"])
+        for row in support.to_dict("records")
+    }
+
+    weights = np.asarray(
+        [
+            lookup[(str(group), int(label))]
+            for group, label in zip(groups, labels)
+        ],
+        dtype=float,
+    )
+
+    mean_weight = float(weights.mean())
+
+    if mean_weight <= 0:
+        raise ValueError("Mean update weight must be positive.")
+
+    weights = weights / mean_weight
+    support["normalized_weight"] = support["raw_weight"] / mean_weight
+
+    support = (
+        support
+        .sort_values(["group", label_name])
+        .reset_index(drop=True)
+    )
+
+    return weights, support
+
+
+def make_uniform_update_weights(
+    *,
+    groups: np.ndarray,
+    labels: np.ndarray,
+    label_name: str = "label",
+) -> tuple[np.ndarray, pd.DataFrame]:
+    """
+    Return unit update weights and the corresponding group-label support table.
+    """
+    groups = np.asarray(groups).astype(str)
+    labels = np.asarray(labels, dtype=int)
+
+    if len(groups) != len(labels):
+        raise ValueError("groups and labels must have the same length.")
+
+    weights = np.ones(len(groups), dtype=float)
+
+    support = (
+        pd.DataFrame(
+            {
+                "group": groups,
+                label_name: labels,
+            }
+        )
+        .value_counts(["group", label_name])
+        .rename("n")
+        .reset_index()
+        .sort_values(["group", label_name])
+        .reset_index(drop=True)
+    )
+
+    support["raw_weight"] = 1.0
+    support["normalized_weight"] = 1.0
+
+    return weights, support
+
+
+def make_preprocessing_weights(
+    *,
+    preprocessing: str,
+    groups: np.ndarray,
+    oracle_actions: np.ndarray,
+) -> tuple[np.ndarray, pd.DataFrame]:
+    """
+    Build the online update weights used by the synthetic CMAB benchmark.
+
+    Supported modes:
+    - "uniform": all observations receive weight 1.
+    - "reweigh_group_label": inverse-frequency weighting by group and oracle action.
+    """
+    if preprocessing == "uniform":
+        return make_uniform_update_weights(
+            groups=groups,
+            labels=oracle_actions,
+            label_name="oracle_action",
+        )
+
+    if preprocessing == "reweigh_group_label":
+        return make_group_label_update_weights(
+            groups=groups,
+            labels=oracle_actions,
+            label_name="oracle_action",
+        )
+
+    raise ValueError(f"Unknown preprocessing mode: {preprocessing}")

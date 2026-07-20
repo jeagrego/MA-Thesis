@@ -1,57 +1,93 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
 
 
-def fmt_mean_sd(values) -> str:
+def fmt_mean_sd(values: Iterable[float], digits: int = 4) -> str:
     """
-    Format the mean and standard deviation of a list of values as a LaTeX string.
-    The output format is: "mean ± std", where mean and std are rounded to 4 decimal places.
+    Format values as mean ± standard deviation for LaTeX tables.
     """
     array = np.asarray(list(values), dtype=float)
 
     return (
-        f"{np.nanmean(array):.4f} "
+        f"{np.nanmean(array):.{digits}f} "
         "$\\pm$ "
-        f"{np.nanstd(array, ddof=1):.4f}"
+        f"{np.nanstd(array, ddof=1):.{digits}f}"
     )
+
+
+def dataframe_to_latex_tabular(
+    dataframe: pd.DataFrame,
+    *,
+    column_alignment: str | None = None,
+) -> str:
+    """
+    Convert a small DataFrame to a LaTeX tabular without pandas.to_latex.
+    """
+    columns = [str(column) for column in dataframe.columns]
+
+    if column_alignment is None:
+        column_alignment = "l" * len(columns)
+
+    lines = [
+        "\\begin{tabular}{" + column_alignment + "}",
+        "\\toprule",
+        " & ".join(columns) + r" \\",
+        "\\midrule",
+    ]
+
+    for _, row in dataframe.iterrows():
+        values = [str(row[column]) for column in dataframe.columns]
+        lines.append(" & ".join(values) + r" \\")
+
+    lines.extend(
+        [
+            "\\bottomrule",
+            "\\end{tabular}",
+        ]
+    )
+
+    return "\n".join(lines)
 
 
 def export_latex_table(
     dataframe: pd.DataFrame,
-    path: Path,
+    path: str | Path,
     caption: str,
     label: str,
+    *,
+    scriptsize: bool = True,
+    resize_to_textwidth: bool = True,
 ) -> Path:
     """
-    Export a pandas DataFrame as a LaTeX table to a file.
+    Export a DataFrame as a LaTeX table without requiring Jinja2.
     """
-    path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    out_path = Path(path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    size_line = "\\scriptsize\n" if scriptsize else ""
+
+    tabular = dataframe_to_latex_tabular(dataframe)
+
+    if resize_to_textwidth:
+        body = "\\resizebox{\\textwidth}{!}{%\n" + tabular + "\n}%\n"
+    else:
+        body = tabular + "\n"
 
     latex = (
         "\\begin{table}[htbp]\n"
         "\\centering\n"
-        "\\scriptsize\n"
+        f"{size_line}"
         f"\\caption{{{caption}}}\n"
         f"\\label{{{label}}}\n"
-        "\\resizebox{\\textwidth}{!}{%\n"
-        + dataframe.to_latex(
-            index=False,
-            escape=False,
-        )
-        + "}\n"
+        f"{body}"
         "\\end{table}\n"
     )
 
-    path.write_text(
-        latex,
-        encoding="utf-8",
-    )
+    out_path.write_text(latex, encoding="utf-8")
 
-    return path
+    return out_path

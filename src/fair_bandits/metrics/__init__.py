@@ -8,12 +8,18 @@ from .fairness import (
     safe_rate,
     tpr_gap,
 )
-from .utility import cumulative_regret, utility_gap
+from .utility import (
+    cumulative_prediction_error,
+    cumulative_regret,
+    utility_gap,
+)
 from .summary import mean_ci, summarize_metrics
 from .temporal import (
+    add_synthetic_temporal_metrics,
     add_temporal_columns_single_run,
     aggregate_temporal_over_seeds,
 )
+from .naming import normalize_metric_columns
 
 from .classification_bandit import safe_gap, summarize_classification_bandit
 
@@ -27,9 +33,14 @@ __all__ = [
     "equalized_odds_gap",
     "ppv_gap",
     "utility_gap",
+    "cumulative_prediction_error",
     "cumulative_regret",
     "summarize_metrics",
     "mean_ci",
+    "normalize_metric_columns",
+    "add_synthetic_temporal_metrics",
     "add_temporal_columns_single_run",
     "aggregate_temporal_over_seeds",
+    "safe_gap",
+    "summarize_classification_bandit",
 ]

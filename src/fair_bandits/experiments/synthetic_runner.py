@@ -4,6 +4,9 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import time
+from dataclasses import dataclass
+from pathlib import Path
 
 from ..metrics.summary import summarize_metrics
 from ..data.synthetic import make_synthetic_cmab_dataset
@@ -14,15 +17,31 @@ from ..policies.linear_ts import (
 )
 
 from ..policies import (
-    LinUCB,
-    GroupAwareDPLinUCB,
-    LinearThompsonSampling,
-    GroupAwareDPLinearThompsonSampling,
     EXP4,
     GroupAwareDPEXP4,
+    GroupAwareDPLinUCB,
+    GroupAwareDPLinearThompsonSampling,
+    LinUCB,
+    LinearThompsonSampling,
+    SyntheticPolicyParams,
+    instantiate_synthetic_policy,
+    weighted_exp4_update,
+    weighted_linear_update,
 )
+
 from ..data.synthetic import make_synthetic_cmab_dataset, make_synthetic_expert_advice
 
+from ..data import (
+    make_preprocessing_weights,
+    make_synthetic_cmab_dataset,
+    make_synthetic_expert_advice,
+    make_synthetic_potential_rewards,
+)
+
+from ..metrics import (
+    add_synthetic_temporal_metrics,
+    normalize_metric_columns,
+)
 
 def replay_bandit_on_synthetic_env(
     policy,
@@ -664,3 +683,419 @@ def run_regime_matched_synth_benchmark(
         "ci_long": ci_long,
         "logs": logs_df,
     }
+
+def replay_one_synthetic_trajectory(
+    *,
+    dataset: dict,
+    potential_rewards: np.ndarray,
+    policy_name: str,
+    preprocessing: str,
+    seed: int,
+    params: SyntheticPolicyParams,
+    expert_advice: np.ndarray | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Replay one policy on one fixed synthetic environment.
+    """
+    df_environment = dataset["df"].copy()
+
+    x_values = np.asarray(dataset["X"], dtype=float)
+    groups = np.asarray(dataset["group"]).astype(str)
+    oracle_actions = np.asarray(dataset["y_opt"], dtype=int)
+
+    weights, weight_support = make_preprocessing_weights(
+        preprocessing=preprocessing,
+        groups=groups,
+        oracle_actions=oracle_actions,
+    )
+
+    policy = instantiate_synthetic_policy(
+        policy_name=policy_name,
+        groups=groups,
+        seed=int(seed),
+        params=params,
+    )
+
+    logs = []
+
+    for t in range(len(df_environment)):
+        x_t = x_values[t]
+        group = str(groups[t])
+
+        probabilities = df_environment.iloc[t][
+            ["p_action_0", "p_action_1"]
+        ].to_numpy(dtype=float)
+
+        if policy_name in {"EXP4", "FairEXP4_DP"}:
+            if expert_advice is None:
+                raise ValueError("EXP4 policies require expert_advice.")
+
+            advice_t = expert_advice[t]
+
+            if policy_name == "FairEXP4_DP":
+                action = int(policy.select_from_advice(advice_t, group=group))
+            else:
+                action = int(policy.select_from_advice(advice_t))
+
+        else:
+            if policy_name in {"FairLinUCB_DP", "FairLinTS_DP"}:
+                action = int(policy.select(x_t, group=group))
+            else:
+                action = int(policy.select(x_t))
+
+        reward = float(potential_rewards[t, action])
+        chosen_probability = float(probabilities[action])
+
+        oracle_action = int(df_environment.iloc[t]["oracle_action"])
+        oracle_probability = float(df_environment.iloc[t]["oracle_prob"])
+
+        prediction_error_increment = float(
+            oracle_probability - chosen_probability
+        )
+
+        weight = float(weights[t])
+
+        if policy_name in {"EXP4", "FairEXP4_DP"}:
+            weighted_exp4_update(
+                policy=policy,
+                action=action,
+                reward=reward,
+                expert_advice=advice_t,
+                weight=weight,
+                group=group if policy_name == "FairEXP4_DP" else None,
+            )
+        else:
+            weighted_linear_update(
+                policy=policy,
+                x=x_t,
+                action=action,
+                reward=reward,
+                weight=weight,
+                group=group
+                if policy_name in {"FairLinUCB_DP", "FairLinTS_DP"}
+                else None,
+            )
+
+        logs.append(
+            {
+                "t": int(t + 1),
+                "group": int(group),
+                "oracle_action": oracle_action,
+                "action": action,
+                "positive_action": int(action == 1),
+                "reward": reward,
+                "oracle_prob": oracle_probability,
+                "chosen_prob": chosen_probability,
+                "prediction_error_increment": prediction_error_increment,
+                "is_correct_oracle": int(action == oracle_action),
+                "update_weight": weight,
+                "preprocessing": preprocessing,
+                "policy": policy_name,
+            }
+        )
+
+    logs_df = add_synthetic_temporal_metrics(pd.DataFrame(logs))
+
+    return logs_df, weight_support
+
+def synthetic_trajectory_path(
+    *,
+    trajectory_dir: Path,
+    regime: str,
+    preprocessing: str,
+    policy_name: str,
+    seed: int,
+) -> Path:
+    """
+    Save the trajectory logs for a specific synthetic run to a structured directory path.
+    """
+    
+    directory = trajectory_dir / regime / preprocessing / policy_name
+    directory.mkdir(parents=True, exist_ok=True)
+
+    return directory / f"seed_{int(seed):03d}.csv.gz"
+
+
+def synthetic_weights_path(
+    *,
+    metadata_dir: Path,
+    regime: str,
+    preprocessing: str,
+    seed: int,
+) -> Path:
+    """
+    Save the preprocessing weights for a specific synthetic run to a structured directory path."""
+    directory = metadata_dir / "weights" / regime / preprocessing
+    directory.mkdir(parents=True, exist_ok=True)
+
+    return directory / f"seed_{int(seed):03d}.csv"
+
+
+def summarize_synthetic_checkpoints(
+    logs_df: pd.DataFrame,
+    *,
+    checkpoints: list[int] | tuple[int, ...],
+    regime: str,
+    preprocessing: str,
+    policy_name: str,
+    seed: int,
+    source_path: Path,
+) -> pd.DataFrame:
+    """
+    Summarize one trajectory at selected checkpoints.
+    """
+    logs_df = normalize_metric_columns(logs_df)
+
+    rows = []
+
+    for checkpoint in checkpoints:
+        subset = logs_df[logs_df["t"] <= int(checkpoint)].copy()
+
+        if subset.empty:
+            continue
+
+        last = subset.iloc[-1]
+
+        rows.append(
+            {
+                "regime": regime,
+                "preprocessing": preprocessing,
+                "policy": policy_name,
+                "seed": int(seed),
+                "T": int(checkpoint),
+                "n_observed": int(len(subset)),
+                "accuracy": float(subset["is_correct_oracle"].mean()),
+                "avg_reward": float(subset["reward"].mean()),
+                "average_reward": float(subset["reward"].mean()),
+                "cum_reward": float(last["cum_reward"]),
+                "cumulative_prediction_error": float(
+                    last["cumulative_prediction_error"]
+                ),
+                "DP_gap": float(last["DP_gap_over_time"]),
+                "TPR_gap": float(last["TPR_gap_over_time"]),
+                "FPR_gap": float(last["FPR_gap_over_time"]),
+                "EO_gap": float(last["EO_gap_over_time"]),
+                "UtilityGap": float(last["UtilityGap_over_time"]),
+                "trajectory_file": str(source_path),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+def load_existing_synthetic_checkpoint_rows(
+    *,
+    path: Path,
+    checkpoints: list[int] | tuple[int, ...],
+    regime: str,
+    preprocessing: str,
+    policy_name: str,
+    seed: int,
+) -> pd.DataFrame:
+    """
+    Reload a cached trajectory and rebuild checkpoint summaries.
+    """
+    logs_df = pd.read_csv(path, compression="gzip")
+    logs_df = normalize_metric_columns(logs_df)
+
+    return summarize_synthetic_checkpoints(
+        logs_df,
+        checkpoints=checkpoints,
+        regime=regime,
+        preprocessing=preprocessing,
+        policy_name=policy_name,
+        seed=seed,
+        source_path=path,
+    )
+    
+def run_online_synthetic_benchmarks(
+    *,
+    run_dir: Path,
+    regimes: list[str] | tuple[str, ...],
+    preprocessings: list[str] | tuple[str, ...],
+    policies_by_regime: dict[str, list[str]],
+    seeds: list[int] | tuple[int, ...],
+    checkpoints: list[int] | tuple[int, ...],
+    t_max: int,
+    params: SyntheticPolicyParams,
+    force_rerun: bool = False,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Run the portable online synthetic CMAB benchmark.
+
+    Outputs:
+    - tables/endpoint_perseed.csv
+    - tables/run_index.csv
+    - trajectories/<regime>/<preprocessing>/<policy>/seed_XXX.csv.gz
+    - metadata/weights/<regime>/<preprocessing>/seed_XXX.csv
+    """
+    run_dir = Path(run_dir)
+
+    table_dir = run_dir / "tables"
+    trajectory_dir = run_dir / "trajectories"
+    metadata_dir = run_dir / "metadata"
+
+    table_dir.mkdir(parents=True, exist_ok=True)
+    trajectory_dir.mkdir(parents=True, exist_ok=True)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+
+    endpoint_path = table_dir / "endpoint_perseed.csv"
+    run_index_path = table_dir / "run_index.csv"
+
+    checkpoint_frames = []
+    run_index_rows = []
+
+    total_runs = sum(
+        len(policies_by_regime[regime]) * len(preprocessings) * len(seeds)
+        for regime in regimes
+    )
+
+    completed_count = 0
+    start_time = time.time()
+
+    for regime in regimes:
+        print("Regime:", regime)
+
+        for seed in seeds:
+            environment_seed = int(seed)
+
+            dataset = make_synthetic_cmab_dataset(
+                T=int(t_max),
+                d=int(params.d),
+                regime=regime,
+                seed=environment_seed,
+            )
+
+            potential_rewards = make_synthetic_potential_rewards(
+                dataset,
+                environment_seed=environment_seed,
+                regime=regime,
+            )
+
+            expert_advice = None
+
+            if regime == "adversarial_switching":
+                expert_advice, _ = make_synthetic_expert_advice(
+                    dataset,
+                    n_experts=params.n_experts,
+                    seed=environment_seed,
+                )
+
+            for preprocessing in preprocessings:
+                _, weight_support = make_preprocessing_weights(
+                    preprocessing=preprocessing,
+                    groups=dataset["group"],
+                    oracle_actions=dataset["y_opt"],
+                )
+
+                support_path = synthetic_weights_path(
+                    metadata_dir=metadata_dir,
+                    regime=regime,
+                    preprocessing=preprocessing,
+                    seed=seed,
+                )
+
+                weight_support.to_csv(support_path, index=False)
+
+                for policy_name in policies_by_regime[regime]:
+                    path = synthetic_trajectory_path(
+                        trajectory_dir=trajectory_dir,
+                        regime=regime,
+                        preprocessing=preprocessing,
+                        policy_name=policy_name,
+                        seed=seed,
+                    )
+
+                    run_started = time.time()
+
+                    if path.exists() and not force_rerun:
+                        print("Loaded cached trajectory:", path)
+
+                        checkpoint_df = load_existing_synthetic_checkpoint_rows(
+                            path=path,
+                            checkpoints=checkpoints,
+                            regime=regime,
+                            preprocessing=preprocessing,
+                            policy_name=policy_name,
+                            seed=seed,
+                        )
+
+                        status = "cached"
+
+                    else:
+                        print(
+                            "Running:",
+                            {
+                                "regime": regime,
+                                "preprocessing": preprocessing,
+                                "policy": policy_name,
+                                "seed": int(seed),
+                            },
+                        )
+
+                        logs_df, _ = replay_one_synthetic_trajectory(
+                            dataset=dataset,
+                            potential_rewards=potential_rewards,
+                            policy_name=policy_name,
+                            preprocessing=preprocessing,
+                            seed=seed,
+                            params=params,
+                            expert_advice=expert_advice,
+                        )
+
+                        logs_df["regime"] = regime
+                        logs_df["seed"] = int(seed)
+                        logs_df["T_max"] = int(t_max)
+
+                        logs_df.to_csv(
+                            path,
+                            index=False,
+                            compression="gzip",
+                        )
+
+                        checkpoint_df = summarize_synthetic_checkpoints(
+                            logs_df,
+                            checkpoints=checkpoints,
+                            regime=regime,
+                            preprocessing=preprocessing,
+                            policy_name=policy_name,
+                            seed=seed,
+                            source_path=path,
+                        )
+
+                        status = "computed"
+
+                    checkpoint_frames.append(checkpoint_df)
+
+                    run_index_rows.append(
+                        {
+                            "regime": regime,
+                            "preprocessing": preprocessing,
+                            "policy": policy_name,
+                            "seed": int(seed),
+                            "trajectory_file": str(path),
+                            "status": status,
+                            "elapsed_seconds": float(time.time() - run_started),
+                        }
+                    )
+
+                    completed_count += 1
+                    print(f"Completed {completed_count}/{total_runs}")
+
+                    checkpoint_all = pd.concat(
+                        checkpoint_frames,
+                        ignore_index=True,
+                    )
+
+                    run_index = pd.DataFrame(run_index_rows)
+
+                    checkpoint_all.to_csv(endpoint_path, index=False)
+                    run_index.to_csv(run_index_path, index=False)
+
+    elapsed = float(time.time() - start_time)
+    print(f"\nBenchmark completed in {elapsed / 60.0:.2f} minutes.")
+
+    checkpoint_all = pd.concat(checkpoint_frames, ignore_index=True)
+    run_index = pd.DataFrame(run_index_rows)
+
+    return checkpoint_all, run_index

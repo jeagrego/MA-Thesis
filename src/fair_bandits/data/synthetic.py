@@ -5,6 +5,8 @@ from dataclasses import dataclass, asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import hashlib
+from typing import Any
 
 
 @dataclass
@@ -53,7 +55,9 @@ class SyntheticCMABGenerator:
         return 1.0 / (1.0 + np.exp(-z))
 
     def _sample_normalized_theta(self) -> np.ndarray:
-        """Sample a random theta vector and normalize it to have unit norm."""
+        """
+        Sample a random theta vector and normalize it to have unit norm.
+        """
         theta = self.rng.normal(0.0, self.cfg.theta_scale, size=self.cfg.d)
         norm = np.linalg.norm(theta)
         if norm <= 1e-12:
@@ -61,7 +65,9 @@ class SyntheticCMABGenerator:
         return theta / norm
 
     def _build_base_parameters(self) -> dict[str, np.ndarray | float]:
-        """Sample the base parameters for the reward model."""
+        """
+        Sample the base parameters for the reward model.
+        """
         theta0 = self._sample_normalized_theta()
         theta1 = self._sample_normalized_theta()
         return {
@@ -74,7 +80,9 @@ class SyntheticCMABGenerator:
         }
 
     def _sample_context(self, group: int) -> np.ndarray:
-        """Sample a context vector for a given group, applying mean shift if configured."""
+        """
+        Sample a context vector for a given group, applying mean shift if configured.
+        """
         x = self.rng.normal(0.0, 1.0, size=self.cfg.d)
         if int(group) == 1 and self.cfg.context_mean_shift_group1 != 0.0:
             x = x + self.cfg.context_mean_shift_group1
@@ -84,14 +92,18 @@ class SyntheticCMABGenerator:
         return x
 
     def _block_sign(self, t: int) -> float:
-        """Determine the sign of the adversarial shock based on the current time step and block configuration."""
+        """
+        Determine the sign of the adversarial shock based on the current time step and block configuration.
+        """
         block_idx = int(t // self.cfg.adversarial_block_size)
         if self.cfg.adversarial_flip_odd_blocks and (block_idx % 2 == 1):
             return -1.0
         return 1.0
 
     def reward_probabilities(self, x: np.ndarray, group: int, t: int) -> np.ndarray:
-        """Compute the reward probabilities for each action given the context, group, and time step."""
+        """
+        Compute the reward probabilities for each action given the context, group, and time step.
+        """
         params = self.base_params
         g = int(group)
 
@@ -122,13 +134,17 @@ class SyntheticCMABGenerator:
         raise ValueError(f"Unknown regime '{regime}'.")
 
     def sample_reward(self, chosen_action: int, true_prob: float, group: int) -> float:
-        """Sample a reward for the chosen action based on the true reward probability and the configured regime."""
+        """
+        Sample a reward for the chosen action based on the true reward probability and the configured regime.
+        """
         if self.cfg.regime == "stationary_deterministic":
             return float(true_prob)
         return float(self.rng.binomial(1, np.clip(true_prob, 0.0, 1.0)))
 
     def generate(self) -> dict:
-        """Generate the synthetic contextual multi-armed bandit."""
+        """
+        Generate the synthetic contextual multi-armed bandit.
+        """
         rows = []
         X = np.zeros((self.cfg.T, self.cfg.d), dtype=np.float64)
         group = np.zeros(self.cfg.T, dtype=int)
@@ -175,14 +191,82 @@ def make_synthetic_cmab_dataset(
     seed: int = 0,
     **config_overrides,
 ) -> dict:
-    """Convenience function to generate a synthetic CMAB dataset with specified parameters."""
+    """
+    Convenience function to generate a synthetic CMAB dataset with specified parameters.
+    """
     cfg = SyntheticCMABConfig(T=T, d=d, regime=regime, **config_overrides)
     gen = SyntheticCMABGenerator(config=cfg, seed=seed)
     return gen.generate()
 
+def _stable_uint32(*parts: Any) -> int:
+    """
+    Build a deterministic uint32 seed from arbitrary values.
+
+    This is used to generate paired potential rewards for all policies evaluated
+    on the same synthetic environment.
+    """
+    text = "||".join(str(part) for part in parts)
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    return int(digest[:8], 16)
+
+
+def make_synthetic_potential_rewards(
+    dataset: dict,
+    *,
+    environment_seed: int,
+    regime: str | None = None,
+) -> np.ndarray:
+    """
+    Sample one potential reward for each round and each action.
+
+    All policies evaluated on the same synthetic environment should use this same
+    reward table. This keeps policy comparisons paired across methods.
+
+    For the deterministic regime, the potential rewards are simply the true
+    reward probabilities. For stochastic regimes, rewards are sampled once from
+    the action-specific reward probabilities.
+    """
+    if "df" not in dataset:
+        raise ValueError("dataset must contain a 'df' entry.")
+
+    df = dataset["df"]
+
+    required_columns = ["p_action_0", "p_action_1"]
+    missing_columns = [
+        column for column in required_columns if column not in df.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"Synthetic dataset is missing required columns: {missing_columns}"
+        )
+
+    if regime is None:
+        regime = str(dataset.get("config", {}).get("regime", "stationary_stochastic"))
+
+    probabilities = df[required_columns].to_numpy(dtype=float)
+
+    if regime == "stationary_deterministic":
+        return probabilities.copy()
+
+    rng = np.random.default_rng(
+        _stable_uint32(
+            "potential_rewards",
+            regime,
+            environment_seed,
+            len(df),
+        )
+    )
+
+    uniforms = rng.uniform(0.0, 1.0, size=probabilities.shape)
+
+    return (uniforms < probabilities).astype(float)
 
 def quick_synthetic_diagnostics(dataset: dict) -> None:
-    """Print quick diagnostics and visualizations."""
+    """
+    Print quick diagnostics and visualizations.
+    """
     df = dataset["df"].copy()
 
     print("Config:")

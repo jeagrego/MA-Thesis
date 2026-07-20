@@ -22,6 +22,12 @@ from .synthetic_runner import (
     run_regime_matched_synth_benchmark,
     make_synth_temporal_ci,
     make_synth_summary_table,
+    SyntheticPolicyParams,
+    instantiate_synthetic_policy,
+    replay_one_synthetic_trajectory,
+    summarize_synthetic_checkpoints,
+    load_existing_synthetic_checkpoint_rows,
+    run_online_synthetic_benchmarks,
 )
 
 from .compas_exp4_race_binary import (
@@ -59,4 +65,10 @@ __all__ = [
     "read_csv_or_empty",
     "run_exp4_postprocessing_horizon_benchmark",
     "evaluate_fair_exp4_with_postprocessing",
+    "SyntheticPolicyParams",
+    "instantiate_synthetic_policy",
+    "replay_one_synthetic_trajectory",
+    "summarize_synthetic_checkpoints",
+    "load_existing_synthetic_checkpoint_rows",
+    "run_online_synthetic_benchmarks",
 ]

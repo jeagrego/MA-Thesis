@@ -19,6 +19,17 @@ from .compas_exp4 import (
     prepare_performance_plot_df,
 )
 
+from .synthetic_cmab import (
+    DEFAULT_POLICY_LABELS,
+    DEFAULT_PREPROCESSING_LABELS,
+    aggregate_temporal_mean_sd,
+    friendly_label,
+    plot_curve_with_sd,
+    plot_synthetic_inprocessing_fairness,
+    plot_synthetic_performance_metric,
+    plot_synthetic_preprocessing_fairness,
+)
+
 __all__ = [
     "plot_average_reward_over_time",
     "plot_rolling_reward",
@@ -35,4 +46,12 @@ __all__ = [
     "plot_two_panel",
     "plot_utility_gap_over_time",
     "prepare_performance_plot_df",
+    "DEFAULT_POLICY_LABELS",
+    "DEFAULT_PREPROCESSING_LABELS",
+    "aggregate_temporal_mean_sd",
+    "friendly_label",
+    "plot_curve_with_sd",
+    "plot_synthetic_preprocessing_fairness",
+    "plot_synthetic_inprocessing_fairness",
+    "plot_synthetic_performance_metric",
 ]

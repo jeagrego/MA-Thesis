@@ -1,6 +1,9 @@
 # Data artifacts
 *.csv
 *.json
+*.png
+*.csv.gz
+*.tex
 
 # Python packaging/build metadata
 *.egg-info/

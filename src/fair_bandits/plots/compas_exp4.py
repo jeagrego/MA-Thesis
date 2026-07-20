@@ -8,6 +8,60 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+PREPROCESSING_LABELS: dict[str, str] = {
+    "uniform": "Uniform",
+    "reweigh_group_label": "Reweighting",
+}
+
+METRIC_DISPLAY_NAMES: dict[str, str] = {
+    "DP gap": "Demographic Parity Gap",
+    "EO gap": "Equalized Odds Gap",
+    "UtilityGap": "UtilityGap",
+    "Accuracy": "Accuracy",
+    "Average reward": "Average reward",
+    "Cumulative prediction error": "Cumulative prediction error",
+}
+
+def friendly_preprocessing(preprocessing: str) -> str:
+    return PREPROCESSING_LABELS.get(str(preprocessing), str(preprocessing))
+
+def exp4_curve_style(
+    *,
+    policy: str,
+    preprocessing: str,
+) -> dict[str, str]:
+    """
+    Visual convention for COMPAS EXP4-family curves.
+
+    EXP4:
+        blue
+
+    FairEXP4:
+        red
+
+    FairEXP4+PP:
+        green
+
+    Uniform:
+        solid line
+
+    Reweighting:
+        dotted line
+    """
+    policy_text = str(policy)
+
+    if policy_text == "EXP4":
+        color = "blue"
+    elif policy_text == "FairEXP4":
+        color = "red"
+    elif policy_text == "FairEXP4+PP":
+        color = "green"
+    else:
+        color = "black"
+
+    linestyle = ":" if preprocessing == "reweigh_group_label" else "-"
+
+    return {"color": color,"linestyle": linestyle,}
 
 def aggregate_temporal_metric(
     dataframe: pd.DataFrame,
@@ -52,31 +106,30 @@ def draw_curve(
     ax,
     curve: pd.DataFrame,
     label: str,
+    *,
+    color: str | None = None,
+    linestyle: str = "-",
 ) -> None:
     """
     Draw a curve with mean and standard deviation on the given axis.
-    Parameters:
-    - ax: matplotlib.axes.Axes
-        The axis on which to draw the curve.
-    - curve: pd.DataFrame
-        A DataFrame containing the time steps, mean, and standard deviation of the metric.
-    - label: str
-        The label for the curve to be displayed in the legend.
     """
     ax.plot(
         curve["t"],
         curve["mean"],
         label=label,
+        color=color,
+        linestyle=linestyle,
         marker=None,
-        linewidth=1.2,
-        alpha=0.9,
+        linewidth=2.0,
+        alpha=0.95,
     )
 
     ax.fill_between(
         curve["t"],
         curve["low"],
         curve["high"],
-        alpha=0.08,
+        color=color,
+        alpha=0.10,
     )
 
 
@@ -153,17 +206,11 @@ def plot_two_panel(
                 if curve.empty:
                     continue
 
-                draw_curve(
-                    ax,
-                    curve,
-                    f"{policy} | {preprocessing}",
-                )
+                label = f"{policy} | {friendly_preprocessing(preprocessing)}"
+                style = exp4_curve_style(policy=policy,preprocessing=preprocessing,)
+                draw_curve(ax,curve,label,**style,)
 
-        ax.set_title(
-            f"{ylabel} over time",
-            fontweight="bold",
-        )
-
+        ax.set_title(f"{ylabel} over time",fontweight="bold",)
         ax.set_xlabel("Rounds")
         ax.set_ylabel(ylabel)
         ax.grid(True, alpha=0.3)
@@ -171,19 +218,9 @@ def plot_two_panel(
 
     plt.tight_layout()
 
-    fig_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
+    fig_dir.mkdir(parents=True,exist_ok=True,)
     output_path = fig_dir / filename
-
-    plt.savefig(
-        output_path,
-        dpi=300,
-        bbox_inches="tight",
-    )
-
+    plt.savefig(output_path,dpi=300,bbox_inches="tight",)
     print("Saved:", output_path)
     plt.show()
 
@@ -214,7 +251,7 @@ def plot_exp4_temporal_fairness(
     """
     if temporal_df.empty:
         print(
-            "Temporal dataframe is empty. "
+            "Temporal dataframe is empty."
             "Run the benchmark before generating temporal fairness plots."
         )
         return []
@@ -225,7 +262,7 @@ def plot_exp4_temporal_fairness(
         plot_two_panel(
             temporal_df,
             fig_dir=fig_dir,
-            title="COMPAS | sensitive=race_binary | EXP4 | Preprocessing comparison",
+            title="COMPAS | sensitive = race binary | EXP4 | Preprocessing comparison",
             filename="compas_race_binary_exp4_preprocessing_fairness.png",
             policies=policies,
             preprocessings=preprocessings,
@@ -236,7 +273,7 @@ def plot_exp4_temporal_fairness(
         plot_two_panel(
             temporal_df,
             fig_dir=fig_dir,
-            title="COMPAS | sensitive=race_binary | EXP4 | In-processing comparison",
+            title="COMPAS | sensitive = race binary | EXP4 | In-processing comparison",
             filename="compas_race_binary_exp4_inprocessing_fairness.png",
             policies=policies,
             preprocessings=preprocessings,
@@ -277,26 +314,10 @@ def plot_utility_gap_over_time(
     )
 
     curves = [
-        (
-            "EXP4",
-            "uniform",
-            "EXP4 | uniform",
-        ),
-        (
-            "EXP4",
-            "reweigh_group_label",
-            "EXP4 | reweigh_group_label",
-        ),
-        (
-            "FairEXP4",
-            "uniform",
-            "FairEXP4 | uniform",
-        ),
-        (
-            "FairEXP4",
-            "reweigh_group_label",
-            "FairEXP4 | reweigh_group_label",
-        ),
+    ("EXP4", "uniform"),
+    ("EXP4", "reweigh_group_label"),
+    ("FairEXP4", "uniform"),
+    ("FairEXP4", "reweigh_group_label"),
     ]
 
     fig, ax = plt.subplots(
@@ -306,12 +327,12 @@ def plot_utility_gap_over_time(
     )
 
     fig.suptitle(
-        "COMPAS | sensitive=race_binary | EXP4 | UtilityGap over time",
+        "COMPAS | sensitive = race binary | EXP4 | UtilityGap over time",
         fontweight="bold",
         y=1.02,
     )
 
-    for policy, preprocessing, label in curves:
+    for policy, preprocessing in curves:
         curve = summary[
             (
                 summary["policy"]
@@ -331,53 +352,19 @@ def plot_utility_gap_over_time(
             )
             continue
 
-        draw_curve(
-            ax,
-            curve,
-            label,
-        )
+        label = f"{policy} | {friendly_preprocessing(preprocessing)}"
+        style = exp4_curve_style(policy=policy,preprocessing=preprocessing,)
+        draw_curve(ax,curve,label,**style,)
 
-    ax.set_xlabel(
-        "Rounds"
-    )
-
-    ax.set_ylabel(
-        "UtilityGap"
-    )
-
-    ax.grid(
-        True,
-        alpha=0.3,
-    )
-
-    ax.legend(
-        fontsize=8,
-        loc="upper right",
-    )
-
+    ax.set_xlabel("Rounds")
+    ax.set_ylabel("UtilityGap")
+    ax.grid(True,alpha=0.3,)
+    ax.legend(fontsize=8,loc="upper right",)
     plt.tight_layout()
-
-    fig_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    output_path = (
-        fig_dir
-        / "compas_race_binary_exp4_utilitygap_over_time.png"
-    )
-
-    plt.savefig(
-        output_path,
-        dpi=300,
-        bbox_inches="tight",
-    )
-
-    print(
-        "Saved:",
-        output_path,
-    )
-
+    fig_dir.mkdir(parents=True,exist_ok=True,)
+    output_path = (fig_dir/ "compas_race_binary_exp4_utilitygap_over_time.png")
+    plt.savefig(output_path,dpi=300,bbox_inches="tight",)
+    print("Saved:",output_path,)
     plt.show()
 
     return output_path
@@ -428,18 +415,16 @@ def plot_exp4_postprocessing_over_horizon(
     fig_dir: Path,
 ) -> Path:
     """
-    Plot the post-processing curves over the training horizon.
+    Plot post-processing curves over the training horizon.
 
-    Visual encoding:
-    - Color encodes the method:
-        red   = FairEXP4 without post-processing
-        green = FairEXP4 with post-processing
-    - Marker encodes the preprocessing:
-        circle = uniform
-        square = reweighing
+    Curves:
+    - EXP4 | Uniform
+    - EXP4 | Reweighting
+    - FairEXP4 | Uniform
+    - FairEXP4 | Reweighting
+    - FairEXP4+PP | Uniform
+    - FairEXP4+PP | Reweighting
     """
-    from matplotlib.lines import Line2D
-
     if postproc_long_df.empty:
         raise ValueError(
             "postproc_long_df is empty. "
@@ -453,35 +438,59 @@ def plot_exp4_postprocessing_over_horizon(
     )
 
     fig.suptitle(
-        "COMPAS | sensitive=race_binary | EXP4 | Post-processing comparison",
+        "COMPAS | sensitive = race binary | EXP4 | Post-processing comparison",
         fontweight="bold",
         y=1.02,
     )
 
     plot_settings = [
         {
-            "policy": "FairEXP4",
+            "policy": "EXP4",
             "preprocessing": "uniform",
-            "color": "red",
+            "label": "EXP4 | Uniform",
+            "color": "blue",
+            "linestyle": "-",
             "marker": "o",
         },
         {
-            "policy": "FairEXP4+PP",
+            "policy": "EXP4",
+            "preprocessing": "reweigh_group_label",
+            "label": "EXP4 | Reweighting",
+            "color": "blue",
+            "linestyle": ":",
+            "marker": "o",
+        },
+        {
+            "policy": "FairEXP4",
             "preprocessing": "uniform",
-            "color": "green",
+            "label": "FairEXP4 | Uniform",
+            "color": "red",
+            "linestyle": "-",
             "marker": "o",
         },
         {
             "policy": "FairEXP4",
             "preprocessing": "reweigh_group_label",
+            "label": "FairEXP4 | Reweighting",
             "color": "red",
-            "marker": "s",
+            "linestyle": ":",
+            "marker": "o",
+        },
+        {
+            "policy": "FairEXP4+PP",
+            "preprocessing": "uniform",
+            "label": "FairEXP4+PP | Uniform",
+            "color": "green",
+            "linestyle": "-",
+            "marker": "o",
         },
         {
             "policy": "FairEXP4+PP",
             "preprocessing": "reweigh_group_label",
+            "label": "FairEXP4+PP | Reweighting",
             "color": "green",
-            "marker": "s",
+            "linestyle": ":",
+            "marker": "o",
         },
     ]
 
@@ -489,12 +498,12 @@ def plot_exp4_postprocessing_over_horizon(
         (
             axes[0],
             "DP_gap",
-            "DP gap",
+            "Demographic Parity Gap",
         ),
         (
             axes[1],
             "EO_gap",
-            "EO gap",
+            "Equalized Odds Gap",
         ),
     ]
 
@@ -507,21 +516,11 @@ def plot_exp4_postprocessing_over_horizon(
         for setting in plot_settings:
             policy = setting["policy"]
             preprocessing = setting["preprocessing"]
-            color = setting["color"]
-            marker = setting["marker"]
 
             curve = summary[
-                (
-                    summary["policy"]
-                    == policy
-                )
-                & (
-                    summary["preprocessing"]
-                    == preprocessing
-                )
-            ].sort_values(
-                "horizon"
-            )
+                (summary["policy"] == policy)
+                & (summary["preprocessing"] == preprocessing)
+            ].sort_values("horizon")
 
             if curve.empty:
                 print(
@@ -534,10 +533,11 @@ def plot_exp4_postprocessing_over_horizon(
             ax.plot(
                 curve["horizon"],
                 curve["mean"],
-                color=color,
-                marker=marker,
-                linestyle="-",
-                linewidth=1.5,
+                label=setting["label"],
+                color=setting["color"],
+                linestyle=setting["linestyle"],
+                marker=setting["marker"],
+                linewidth=2.0,
                 markersize=5,
                 alpha=0.95,
             )
@@ -546,7 +546,7 @@ def plot_exp4_postprocessing_over_horizon(
                 curve["horizon"],
                 curve["low"],
                 curve["high"],
-                color=color,
+                color=setting["color"],
                 alpha=0.08,
             )
 
@@ -555,78 +555,12 @@ def plot_exp4_postprocessing_over_horizon(
             fontweight="bold",
         )
 
-        ax.set_xlabel(
-            "Training horizon / rounds"
-        )
-
-        ax.set_ylabel(
-            ylabel
-        )
-
-        ax.grid(
-            True,
-            alpha=0.3,
-        )
-
-        method_handles = [
-            Line2D(
-                [0],
-                [0],
-                color="red",
-                linestyle="-",
-                linewidth=1.5,
-                label="FairEXP4",
-            ),
-            Line2D(
-                [0],
-                [0],
-                color="green",
-                linestyle="-",
-                linewidth=1.5,
-                label="FairEXP4 + post-processing",
-            ),
-        ]
-
-        preprocessing_handles = [
-            Line2D(
-                [0],
-                [0],
-                color="black",
-                marker="o",
-                linestyle="None",
-                markersize=6,
-                label="Uniform",
-            ),
-            Line2D(
-                [0],
-                [0],
-                color="black",
-                marker="x",
-                linestyle="None",
-                markersize=6,
-                label="Reweighing",
-            ),
-        ]
-
-        method_legend = ax.legend(
-            handles=method_handles,
-            title="Method",
-            loc="upper right",
-            fontsize=8,
-            title_fontsize=9,
-            frameon=True,
-        )
-
-        ax.add_artist(
-            method_legend
-        )
-
+        ax.set_xlabel("Training horizon / rounds")
+        ax.set_ylabel(ylabel)
+        ax.grid(True, alpha=0.3)
         ax.legend(
-            handles=preprocessing_handles,
-            title="Preprocessing",
-            loc="lower right",
             fontsize=8,
-            title_fontsize=9,
+            loc="best",
             frameon=True,
         )
 
@@ -648,10 +582,7 @@ def plot_exp4_postprocessing_over_horizon(
         bbox_inches="tight",
     )
 
-    print(
-        "Saved:",
-        output_path,
-    )
+    print("Saved:", output_path)
 
     plt.show()
 
@@ -770,8 +701,9 @@ def prepare_performance_plot_df(
     df["Preprocessing"] = df["Preprocessing"].replace(
         {
             "uniform": "Uniform",
-            "reweigh_group_label": "Reweighing",
-            "Reweighing": "Reweighing",
+            "reweigh_group_label": "Reweighting",
+            "Reweighing": "Reweighting",
+            "Reweighting": "Reweighting",
             "Uniform": "Uniform",
         }
     )
@@ -911,8 +843,10 @@ def horizontal_metric_plot(
             capsize=4,
         )
 
+        display_metric = METRIC_DISPLAY_NAMES.get(metric, metric)
+
         ax.set_title(
-            metric,
+            display_metric,
             fontweight="bold",
         )
 
@@ -968,15 +902,13 @@ def plot_cumulative_prediction_error_scale_diagnostic(
     fig_dir: Path,
 ) -> Path:
     """
-    Plot the cumulative prediction error under different scale settings.
-    Parameters:
-    - temporal_df: pd.DataFrame
-        The input DataFrame containing the temporal data.
-    - fig_dir: Path
-        The directory where the figure will be saved.
-    Returns:
-    - Path
-        The path to the saved figure.
+    Plot cumulative prediction error under several scale settings.
+
+    Visual convention:
+    - EXP4: blue
+    - FairEXP4: red
+    - Uniform: solid line
+    - Reweighting: dotted line
     """
     dataframe = temporal_df.copy()
 
@@ -1000,10 +932,10 @@ def plot_cumulative_prediction_error_scale_diagnostic(
     )
 
     curves = [
-        ("EXP4", "uniform", "EXP4 | uniform"),
-        ("EXP4", "reweigh_group_label", "EXP4 | reweighing"),
-        ("FairEXP4", "uniform", "FairEXP4 | uniform"),
-        ("FairEXP4", "reweigh_group_label", "FairEXP4 | reweighing"),
+        ("EXP4", "uniform"),
+        ("EXP4", "reweigh_group_label"),
+        ("FairEXP4", "uniform"),
+        ("FairEXP4", "reweigh_group_label"),
     ]
 
     scale_settings = [
@@ -1020,13 +952,13 @@ def plot_cumulative_prediction_error_scale_diagnostic(
     )
 
     fig.suptitle(
-        "COMPAS | sensitive=race_binary | EXP4 | Cumulative prediction error scale diagnostic",
+        "COMPAS | sensitive = race binary | EXP4 | Cumulative prediction error scale diagnostic",
         fontweight="bold",
         y=1.03,
     )
 
     for ax, (xscale, yscale, panel_title) in zip(axes, scale_settings):
-        for policy, preprocessing, label in curves:
+        for policy, preprocessing in curves:
             curve = summary[
                 (summary["policy"] == policy)
                 & (summary["preprocessing"] == preprocessing)
@@ -1039,18 +971,29 @@ def plot_cumulative_prediction_error_scale_diagnostic(
             if xscale == "log":
                 curve = curve[curve["t"] > 0]
 
+            label = f"{policy} | {friendly_preprocessing(preprocessing)}"
+
+            style = exp4_curve_style(
+                policy=policy,
+                preprocessing=preprocessing,
+            )
+
             ax.plot(
                 curve["t"],
                 curve["mean"],
                 label=label,
-                linewidth=2,
+                color=style["color"],
+                linestyle=style["linestyle"],
+                linewidth=2.0,
+                alpha=0.95,
             )
 
             ax.fill_between(
                 curve["t"],
                 curve["low"],
                 curve["high"],
-                alpha=0.12,
+                color=style["color"],
+                alpha=0.08,
             )
 
         ax.set_title(panel_title, fontweight="bold")
@@ -1088,22 +1031,19 @@ def plot_cumulative_prediction_error_scale_diagnostic(
 
     return output_path
 
-
 def plot_differential_cumulative_prediction_error(
     temporal_df: pd.DataFrame,
     *,
     fig_dir: Path,
 ) -> Path:
     """
-    Plot the differential cumulative prediction error.
-    Parameters:
-    - temporal_df: pd.DataFrame
-        The input DataFrame containing the temporal data.
-    - fig_dir: Path
-        The directory where the figure will be saved.
-    Returns:
-    - Path
-        The path to the saved figure.
+    Plot differential cumulative prediction error relative to EXP4 | Uniform.
+
+    Visual convention:
+    - EXP4: blue
+    - FairEXP4: red
+    - Uniform: solid line
+    - Reweighting: dotted line
     """
     dataframe = temporal_df.copy()
 
@@ -1145,21 +1085,23 @@ def plot_differential_cumulative_prediction_error(
 
     if baseline.empty:
         raise ValueError(
-            "Baseline EXP4 | uniform not found in temporal_df."
+            "Baseline EXP4 | Uniform not found in temporal_df."
         )
 
     curves = [
-        ("EXP4", "uniform", "EXP4 | uniform"),
-        ("EXP4", "reweigh_group_label", "EXP4 | reweighing"),
-        ("FairEXP4", "uniform", "FairEXP4 | uniform"),
-        ("FairEXP4", "reweigh_group_label", "FairEXP4 | reweighing"),
+        ("EXP4", "uniform"),
+        ("EXP4", "reweigh_group_label"),
+        ("FairEXP4", "uniform"),
+        ("FairEXP4", "reweigh_group_label"),
     ]
 
-    plt.figure(
-        figsize=(11, 6)
+    fig, ax = plt.subplots(
+        1,
+        1,
+        figsize=(11, 6),
     )
 
-    for policy, preprocessing, label in curves:
+    for policy, preprocessing in curves:
         curve = (
             summary[
                 (summary["policy"] == policy)
@@ -1185,21 +1127,32 @@ def plot_differential_cumulative_prediction_error(
         curve["diff_low"] = curve["low"] - curve["baseline_mean"]
         curve["diff_high"] = curve["high"] - curve["baseline_mean"]
 
-        plt.plot(
+        label = f"{policy} | {friendly_preprocessing(preprocessing)}"
+
+        style = exp4_curve_style(
+            policy=policy,
+            preprocessing=preprocessing,
+        )
+
+        ax.plot(
             curve["t"],
             curve["diff_mean"],
             label=label,
-            linewidth=2,
+            color=style["color"],
+            linestyle=style["linestyle"],
+            linewidth=2.0,
+            alpha=0.95,
         )
 
-        plt.fill_between(
+        ax.fill_between(
             curve["t"],
             curve["diff_low"],
             curve["diff_high"],
-            alpha=0.12,
+            color=style["color"],
+            alpha=0.08,
         )
 
-    plt.axhline(
+    ax.axhline(
         0,
         linestyle="--",
         linewidth=1,
@@ -1207,17 +1160,18 @@ def plot_differential_cumulative_prediction_error(
         alpha=0.7,
     )
 
-    plt.title(
-        "COMPAS | sensitive=race_binary | EXP4 | Differential cumulative prediction error",
+    ax.set_title(
+        "COMPAS | sensitive = race binary | EXP4 | Differential cumulative prediction error",
         fontweight="bold",
     )
 
-    plt.xlabel("Rounds")
-    plt.ylabel(
-        "Difference vs EXP4 | uniform\n(cumulative prediction error)"
+    ax.set_xlabel("Rounds")
+    ax.set_ylabel(
+        "Difference vs EXP4 | Uniform\n(Cumulative prediction error)"
     )
-    plt.grid(True, alpha=0.3)
-    plt.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=9)
+
     plt.tight_layout()
 
     fig_dir.mkdir(

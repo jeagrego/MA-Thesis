@@ -85,6 +85,9 @@ def plot_average_reward_over_time(
     ax=None,
     title: str | None = None,
 ):
+    """
+    Plots the average reward over time for each policy, with confidence intervals across seeds.
+    """
     return _plot_temporal_metric(
         logs_df,
         metric="avg_reward",
@@ -95,9 +98,7 @@ def plot_average_reward_over_time(
         alpha=alpha,
         ax=ax,
     )
-    """
-    Plots the average reward over time for each policy, with confidence intervals across seeds.
-    """
+
 
 
 def plot_rolling_reward(
@@ -109,6 +110,9 @@ def plot_rolling_reward(
     ax=None,
     title: str | None = None,
 ):
+    """
+    Plots the rolling reward over time for each policy, with confidence intervals across seeds.
+    """
     return _plot_temporal_metric(
         logs_df,
         metric="rolling_reward",
@@ -119,9 +123,7 @@ def plot_rolling_reward(
         alpha=alpha,
         ax=ax,
     )
-    """
-    Plots the rolling reward over time for each policy, with confidence intervals across seeds.
-    """
+
 
 def plot_dp_gap_over_time(
     logs_df: pd.DataFrame,
@@ -132,6 +134,9 @@ def plot_dp_gap_over_time(
     ax=None,
     title: str | None = None,
 ):
+    """
+    Plots the demographic parity gap over time for each policy, with confidence intervals across seeds.
+    """
     return _plot_temporal_metric(
         logs_df,
         metric="dp_gap",
@@ -142,6 +147,4 @@ def plot_dp_gap_over_time(
         alpha=alpha,
         ax=ax,
     )
-    """
-    Plots the demographic parity gap over time for each policy, with confidence intervals across seeds.
-    """
+
