@@ -198,6 +198,126 @@ def make_synthetic_cmab_dataset(
     gen = SyntheticCMABGenerator(config=cfg, seed=seed)
     return gen.generate()
 
+def make_imbalanced_synthetic_cmab_dataset(
+    *,
+    T: int = 500,
+    d: int = 10,
+    regime: str = "stationary_stochastic",
+    seed: int = 0,
+    majority_group: str = "0",
+    minority_group: str = "1",
+    minority_fraction: float = 0.20,
+    max_attempts: int = 5,
+    **config_overrides,
+) -> dict:
+    """
+    Generate an exactly imbalanced synthetic CMAB stream.
+
+    The base synthetic generator is called on an oversized sequence. The earliest
+    required observations from each group are retained, and the selected indices
+    are sorted to preserve the original temporal order.
+
+    Supported regimes:
+    - stationary_deterministic
+    - stationary_stochastic
+    - adversarial_switching
+    """
+    valid_regimes = {
+        "stationary_deterministic",
+        "stationary_stochastic",
+        "adversarial_switching",
+    }
+
+    if regime not in valid_regimes:
+        raise ValueError(
+            f"Unknown synthetic regime for imbalanced generation: {regime}. "
+            f"Expected one of: {sorted(valid_regimes)}."
+        )
+
+    if not 0.0 < minority_fraction < 1.0:
+        raise ValueError("minority_fraction must be between 0 and 1.")
+
+    n_minority = int(round(int(T) * float(minority_fraction)))
+    n_majority = int(T) - n_minority
+
+    source_T = max(
+        3 * int(T),
+        1000,
+    )
+
+    base_dataset = None
+    selected_indices = None
+
+    for attempt in range(max_attempts):
+        candidate = make_synthetic_cmab_dataset(
+            T=source_T,
+            d=d,
+            regime=regime,
+            seed=int(seed) + attempt * 100_003,
+            **config_overrides,
+        )
+
+        groups = np.asarray(candidate["group"]).astype(str)
+
+        majority_indices = np.flatnonzero(groups == majority_group)[:n_majority]
+        minority_indices = np.flatnonzero(groups == minority_group)[:n_minority]
+
+        if (
+            len(majority_indices) == n_majority
+            and len(minority_indices) == n_minority
+        ):
+            base_dataset = candidate
+            selected_indices = np.sort(
+                np.concatenate(
+                    [
+                        majority_indices,
+                        minority_indices,
+                    ]
+                )
+            )
+            break
+
+        source_T *= 2
+
+    if base_dataset is None or selected_indices is None:
+        raise RuntimeError(
+            "Unable to construct the requested imbalanced synthetic stream."
+        )
+
+    output = dict(base_dataset)
+
+    output["X"] = np.asarray(base_dataset["X"])[selected_indices].copy()
+    output["group"] = np.asarray(base_dataset["group"])[selected_indices].copy()
+    output["y_opt"] = np.asarray(base_dataset["y_opt"])[selected_indices].copy()
+
+    output["df"] = (
+        base_dataset["df"]
+        .iloc[selected_indices]
+        .reset_index(drop=True)
+        .copy()
+    )
+
+    output["df"]["t"] = np.arange(len(output["df"]))
+
+    observed_groups, observed_counts = np.unique(
+        np.asarray(output["group"]).astype(str),
+        return_counts=True,
+    )
+
+    observed = dict(zip(observed_groups, observed_counts))
+
+    expected = {
+        majority_group: n_majority,
+        minority_group: n_minority,
+    }
+
+    if observed != expected:
+        raise AssertionError(
+            f"Observed counts {observed} do not match expected counts {expected}."
+        )
+
+    return output
+
 def _stable_uint32(*parts: Any) -> int:
     """
     Build a deterministic uint32 seed from arbitrary values.

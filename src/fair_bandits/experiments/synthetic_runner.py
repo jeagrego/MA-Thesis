@@ -919,6 +919,7 @@ def run_online_synthetic_benchmarks(
     t_max: int,
     params: SyntheticPolicyParams,
     force_rerun: bool = False,
+    dataset_factory=make_synthetic_cmab_dataset,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Run the portable online synthetic CMAB benchmark.
@@ -959,7 +960,7 @@ def run_online_synthetic_benchmarks(
         for seed in seeds:
             environment_seed = int(seed)
 
-            dataset = make_synthetic_cmab_dataset(
+            dataset = dataset_factory(
                 T=int(t_max),
                 d=int(params.d),
                 regime=regime,

@@ -20,6 +20,14 @@ from .save import (
     save_dataframe,
 )
 
+from .synthetic_tables import (
+    build_synthetic_final_summary_table,
+    export_synthetic_final_summary_table,
+    export_synthetic_final_summary_tables,
+    export_synthetic_significance_table,
+    export_synthetic_significance_tables,
+)
+
 __all__ = [
     "fmt_mean_sd",
     "dataframe_to_latex_tabular",
@@ -34,4 +42,9 @@ __all__ = [
     "load_downsampled_synthetic_temporal_logs",
     "save_dataframe",
     "export_experiment_bundle",
+    "build_synthetic_final_summary_table",
+    "export_synthetic_final_summary_table",
+    "export_synthetic_final_summary_tables",
+    "export_synthetic_significance_table",
+    "export_synthetic_significance_tables",
 ]

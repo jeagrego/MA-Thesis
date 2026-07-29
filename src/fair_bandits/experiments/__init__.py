@@ -40,6 +40,11 @@ from .compas_exp4_race_binary import (
     read_csv_or_empty,
 )
 
+from .synthetic_preflight import (
+    run_imbalanced_synthetic_preflight,
+    run_synthetic_preflight,
+)
+
 __all__ = [
     "ExperimentBundle",
     "sample_idx_seq",
@@ -71,4 +76,6 @@ __all__ = [
     "summarize_synthetic_checkpoints",
     "load_existing_synthetic_checkpoint_rows",
     "run_online_synthetic_benchmarks",
+    "run_synthetic_preflight",
+    "run_imbalanced_synthetic_preflight",
 ]
