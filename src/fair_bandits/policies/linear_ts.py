@@ -49,7 +49,14 @@ class LinearThompsonSampling(BaseContextualPolicy):
         """
         Compute the ridge regression estimate for the given action.
         """
-        return self.A_inv[action] @ self.b[action]
+        theta = self.A_inv[action] @ self.b[action]
+
+        return np.nan_to_num(
+            theta,
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0,
+        )
 
     def action_scores(self, x: np.ndarray) -> np.ndarray:
         """
@@ -64,11 +71,45 @@ class LinearThompsonSampling(BaseContextualPolicy):
     def _sample_theta(self, action: int) -> np.ndarray:
         """
         Sample a parameter vector from the approximate posterior for the given action.
+
+        The covariance matrix is explicitly stabilized because rare one-hot encoded
+        features in Adult can make the inverse design matrix numerically ill-conditioned.
         """
         mean = self._theta_hat(action)
-        cov = (self.v ** 2) * 0.5 * (self.A_inv[action] + self.A_inv[action].T)
-        cov += 1e-10 * np.eye(self.d, dtype=np.float64)
-        return self.rng.multivariate_normal(mean=mean, cov=cov)
+
+        cov = (self.v ** 2) * 0.5 * (
+            self.A_inv[action] + self.A_inv[action].T
+        )
+
+        cov = np.nan_to_num(
+            cov,
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0,
+        )
+
+        cov = 0.5 * (cov + cov.T)
+        cov = cov + 1e-6 * np.eye(self.d, dtype=np.float64)
+
+        try:
+            return self.rng.multivariate_normal(
+                mean=mean,
+                cov=cov,
+                check_valid="ignore",
+            )
+        except np.linalg.LinAlgError:
+            try:
+                eigvals, eigvecs = np.linalg.eigh(cov)
+                eigvals = np.clip(eigvals, 1e-8, None)
+                z = self.rng.normal(size=self.d)
+
+                return mean + eigvecs @ (np.sqrt(eigvals) * z)
+
+            except np.linalg.LinAlgError:
+                diagonal = np.clip(np.diag(cov), 1e-8, None)
+                z = self.rng.normal(size=self.d)
+
+                return mean + np.sqrt(diagonal) * z
 
     def score(self, x: np.ndarray, action: int) -> float:
         """
@@ -102,12 +143,41 @@ class LinearThompsonSampling(BaseContextualPolicy):
         if not (0 <= a < self.n_actions):
             raise ValueError(f"Invalid action index {a} for n_actions={self.n_actions}.")
 
+        x_vec = np.nan_to_num(
+            x_vec,
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0,
+        )
+
         A_inv = self.A_inv[a]
         Ax = A_inv @ x_vec
         denom = 1.0 + float(x_vec @ Ax)
 
-        self.A_inv[a] = A_inv - np.outer(Ax, Ax) / denom
+        if not np.isfinite(denom) or denom <= 1e-10:
+            return
+
+        updated_A_inv = A_inv - np.outer(Ax, Ax) / denom
+
+        updated_A_inv = np.nan_to_num(
+            updated_A_inv,
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0,
+        )
+
+        updated_A_inv = 0.5 * (updated_A_inv + updated_A_inv.T)
+        updated_A_inv = updated_A_inv + 1e-10 * np.eye(self.d, dtype=np.float64)
+
+        self.A_inv[a] = updated_A_inv
         self.b[a] += r * x_vec
+
+        self.b[a] = np.nan_to_num(
+            self.b[a],
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0,
+        )
 
 
 class GroupAwareDPLinearThompsonSampling(LinearThompsonSampling):

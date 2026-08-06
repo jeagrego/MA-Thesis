@@ -110,12 +110,32 @@ def aggregate_temporal_mean_sd(
     summary = (
         dataframe
         .groupby(group_cols, as_index=False)[metric]
-        .agg(mean="mean", sd="std")
+        .agg(
+            mean="mean",
+            sd="std",
+            n="count",
+        )
     )
 
     summary["sd"] = summary["sd"].fillna(0.0)
-    summary["low"] = summary["mean"] - summary["sd"]
-    summary["high"] = summary["mean"] + summary["sd"]
+    summary["n"] = summary["n"].astype(int)
+    summary["se"] = summary["sd"] / np.sqrt(summary["n"].clip(lower=1))
+
+    try:
+        from scipy.stats import t as student_t
+
+        summary["t_critical"] = summary["n"].apply(
+            lambda n: float(student_t.ppf(0.975, df=int(n) - 1)) if int(n) > 1 else 0.0
+        )
+    except Exception:
+        summary["t_critical"] = 1.96
+        summary.loc[summary["n"] <= 1, "t_critical"] = 0.0
+
+    summary["ci_half_width"] = summary["t_critical"] * summary["se"]
+    summary.loc[summary["n"] <= 1, "ci_half_width"] = 0.0
+
+    summary["low"] = summary["mean"] - summary["ci_half_width"]
+    summary["high"] = summary["mean"] + summary["ci_half_width"]
 
     return summary
 

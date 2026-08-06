@@ -63,21 +63,87 @@ def exp4_curve_style(
 
     return {"color": color,"linestyle": linestyle,}
 
+def _t_critical(
+    n: int,
+    confidence: float = 0.95,
+) -> float:
+    """
+    Return the two-sided Student-t critical value.
+
+    If scipy is unavailable, fall back to the normal approximation.
+    """
+    n = int(n)
+
+    if n <= 1:
+        return 0.0
+
+    try:
+        from scipy.stats import t as student_t
+
+        alpha = 1.0 - float(confidence)
+        return float(
+            student_t.ppf(
+                1.0 - alpha / 2.0,
+                df=n - 1,
+            )
+        )
+
+    except Exception:
+        return 1.96
+
+def add_mean_ci_columns(
+    summary: pd.DataFrame,
+    *,
+    confidence: float = 0.95,
+) -> pd.DataFrame:
+    """
+    Add pointwise confidence interval columns for the mean.
+
+    Expected input columns:
+    - mean
+    - sd
+    - n
+
+    The plotted interval is:
+        mean ± t_(0.975, n-1) × SD / sqrt(n)
+    """
+    out = summary.copy()
+
+    out["sd"] = out["sd"].fillna(0.0)
+    out["n"] = out["n"].astype(int)
+
+    out["se"] = out["sd"] / np.sqrt(
+        out["n"].clip(lower=1)
+    )
+
+    out["t_critical"] = out["n"].apply(
+        lambda n: _t_critical(
+            n,
+            confidence=confidence,
+        )
+    )
+
+    out["ci_half_width"] = out["t_critical"] * out["se"]
+    out.loc[out["n"] <= 1, "ci_half_width"] = 0.0
+
+    out["low"] = out["mean"] - out["ci_half_width"]
+    out["high"] = out["mean"] + out["ci_half_width"]
+
+    return out
+
 def aggregate_temporal_metric(
     dataframe: pd.DataFrame,
     metric: str,
+    *,
+    confidence: float = 0.95,
 ) -> pd.DataFrame:
     """
-    Aggregate a temporal metric across different policies and preprocessings.
-    Parameters:
-    - dataframe: pd.DataFrame
-        The input DataFrame containing the temporal data.   
-    - metric: str
-        The name of the metric to aggregate (e.g., "DP_gap", "EO_gap", "cumulative_prediction_error").
-    Returns:
-    - pd.DataFrame
-        A DataFrame containing the mean and standard deviation of the specified metric,
-        grouped by policy, preprocessing, and time step.
+    Aggregate a temporal metric across seeds.
+
+    The plotted band is the pointwise confidence interval of the mean:
+        mean ± t_(0.975, n-1) × SD / sqrt(n)
+
+    The unit of replication is the full experimental run/seed.
     """
     summary = (
         dataframe
@@ -92,15 +158,11 @@ def aggregate_temporal_metric(
         .agg(
             mean="mean",
             sd="std",
+            n="count",
         )
     )
 
-    summary["sd"] = summary["sd"].fillna(0.0)
-    summary["low"] = summary["mean"] - summary["sd"]
-    summary["high"] = summary["mean"] + summary["sd"]
-
-    return summary
-
+    return add_mean_ci_columns(summary, confidence=confidence,)
 
 def draw_curve(
     ax,
@@ -111,7 +173,7 @@ def draw_curve(
     linestyle: str = "-",
 ) -> None:
     """
-    Draw a curve with mean and standard deviation on the given axis.
+    Draw a mean temporal curve with pointwise 95% confidence interval bands.
     """
     ax.plot(
         curve["t"],
@@ -373,18 +435,13 @@ def aggregate_postprocessing_curve(
     *,
     dataframe: pd.DataFrame,
     metric: str,
+    confidence: float = 0.95,
 ) -> pd.DataFrame:
     """
-    Aggregate a post-processing metric across different policies and preprocessings.
-    Parameters:
-    - dataframe: pd.DataFrame
-        The input DataFrame containing the post-processing data.
-    - metric: str
-        The name of the metric to aggregate (e.g., "DP_gap", "EO_gap").
-    Returns:
-    - pd.DataFrame
-        A DataFrame containing the mean and standard deviation of the specified metric,
-        grouped by policy, preprocessing, and horizon.
+    Aggregate a post-processing metric across seeds.
+
+    The plotted band is the pointwise confidence interval of the mean:
+        mean ± t_(0.975, n-1) × SD / sqrt(n)
     """
     summary = (
         dataframe
@@ -399,15 +456,14 @@ def aggregate_postprocessing_curve(
         .agg(
             mean="mean",
             sd="std",
+            n="count",
         )
     )
 
-    summary["sd"] = summary["sd"].fillna(0.0)
-    summary["low"] = summary["mean"] - summary["sd"]
-    summary["high"] = summary["mean"] + summary["sd"]
-
-    return summary
-
+    return add_mean_ci_columns(
+        summary,
+        confidence=confidence,
+    )
 
 def plot_exp4_postprocessing_over_horizon(
     postproc_long_df: pd.DataFrame,
@@ -769,6 +825,8 @@ def horizontal_metric_plot(
     method_order: list[str] | None = None,
     figsize: tuple[int, int] = (11, 6),
     invert_lower_is_better: bool = False,
+    n_seeds: int = 50,
+    confidence: float = 0.95,
 ) -> None:
     """
     Plot horizontal error bars for specified metrics.
@@ -835,10 +893,19 @@ def horizontal_metric_plot(
         if sd_col not in data.columns:
             data[sd_col] = 0.0
 
+        ci_half_width = (
+            _t_critical(
+                n_seeds,
+                confidence=confidence,
+            )
+            * data[sd_col]
+            / np.sqrt(float(n_seeds))
+        )
+
         ax.errorbar(
             data[mean_col],
             y,
-            xerr=data[sd_col],
+            xerr=ci_half_width,
             fmt="o",
             capsize=4,
         )
@@ -866,7 +933,7 @@ def horizontal_metric_plot(
             "Cumulative prediction error",
         ]:
             ax.set_xlabel(
-                "Mean ± SD\n(lower is better)"
+                "Mean ± 95% CI\n(lower is better)"
             )
 
             if invert_lower_is_better:
@@ -874,7 +941,7 @@ def horizontal_metric_plot(
 
         else:
             ax.set_xlabel(
-                "Mean ± SD\n(higher is better)"
+                "Mean ± 95% CI\n(higher is better)"
             )
 
     plt.tight_layout()

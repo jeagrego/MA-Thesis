@@ -28,6 +28,15 @@ from .synthetic_tables import (
     export_synthetic_significance_tables,
 )
 
+from .adult_tables import (
+    ADULT_SIGNIFICANCE_METRICS,
+    ADULT_SUMMARY_METRICS,
+    build_adult_combined_final_frame,
+    default_adult_significance_comparisons_by_family,
+    export_adult_final_summary_tables,
+    export_adult_significance_tables,
+)
+
 __all__ = [
     "fmt_mean_sd",
     "dataframe_to_latex_tabular",
@@ -47,4 +56,10 @@ __all__ = [
     "export_synthetic_final_summary_tables",
     "export_synthetic_significance_table",
     "export_synthetic_significance_tables",
+    "ADULT_SIGNIFICANCE_METRICS",
+    "ADULT_SUMMARY_METRICS",
+    "build_adult_combined_final_frame",
+    "default_adult_significance_comparisons_by_family",
+    "export_adult_final_summary_tables",
+    "export_adult_significance_tables",
 ]

@@ -45,6 +45,15 @@ from .synthetic_preflight import (
     run_synthetic_preflight,
 )
 
+from .adult_expert_advice import AdultExpertPool, train_adult_expert_pool
+from .adult_runner import (
+    ADULT_FAMILY_LABELS,
+    ADULT_POLICIES_BY_FAMILY,
+    AdultBanditParams,
+    load_adult_family_outputs,
+    run_adult_family_benchmark,
+)
+
 __all__ = [
     "ExperimentBundle",
     "sample_idx_seq",
@@ -78,4 +87,11 @@ __all__ = [
     "run_online_synthetic_benchmarks",
     "run_synthetic_preflight",
     "run_imbalanced_synthetic_preflight",
+    "AdultExpertPool",
+    "train_adult_expert_pool",
+    "ADULT_FAMILY_LABELS",
+    "ADULT_POLICIES_BY_FAMILY",
+    "AdultBanditParams",
+    "load_adult_family_outputs",
+    "run_adult_family_benchmark",
 ]

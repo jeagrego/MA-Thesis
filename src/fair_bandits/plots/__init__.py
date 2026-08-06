@@ -30,6 +30,22 @@ from .synthetic_cmab import (
     plot_synthetic_preprocessing_fairness,
 )
 
+from .adult_cmab import (
+    DEFAULT_ADULT_FAMILY_LABELS,
+    DEFAULT_ADULT_POLICY_LABELS,
+    DEFAULT_ADULT_PREPROCESSING_LABELS,
+    aggregate_adult_curve,
+    adult_curve_style,
+    adult_friendly_label,
+    draw_adult_curve,
+    plot_adult_family_figure_set,
+    plot_adult_inprocessing_fairness,
+    plot_adult_performance_metric,
+    plot_adult_postprocessing_metric,
+    plot_adult_postprocessing_summary,
+    plot_adult_preprocessing_fairness,
+)
+
 __all__ = [
     "plot_average_reward_over_time",
     "plot_rolling_reward",
@@ -54,4 +70,17 @@ __all__ = [
     "plot_synthetic_preprocessing_fairness",
     "plot_synthetic_inprocessing_fairness",
     "plot_synthetic_performance_metric",
+    "DEFAULT_ADULT_FAMILY_LABELS",
+    "DEFAULT_ADULT_POLICY_LABELS",
+    "DEFAULT_ADULT_PREPROCESSING_LABELS",
+    "aggregate_adult_curve",
+    "adult_curve_style",
+    "adult_friendly_label",
+    "draw_adult_curve",
+    "plot_adult_family_figure_set",
+    "plot_adult_inprocessing_fairness",
+    "plot_adult_performance_metric",
+    "plot_adult_postprocessing_metric",
+    "plot_adult_postprocessing_summary",
+    "plot_adult_preprocessing_fairness",
 ]

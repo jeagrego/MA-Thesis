@@ -32,6 +32,17 @@ from .synthetic import (
     quick_synthetic_diagnostics,
 )
 
+from .adult_sex import (
+    AdultSexPreparedData,
+    discover_adult_csv,
+    encode_adult_income,
+    find_adult_column,
+    load_adult_dataframe,
+    make_adult_design_matrix,
+    normalize_adult_column,
+    prepare_adult_sex_splits,
+)
+
 __all__ = [
     "load_adult",
     "prepare_adult_contextual",
@@ -54,4 +65,12 @@ __all__ = [
     "make_uniform_update_weights",
     "make_preprocessing_weights",
     "make_synthetic_potential_rewards",
+    "AdultSexPreparedData",
+    "discover_adult_csv",
+    "encode_adult_income",
+    "find_adult_column",
+    "load_adult_dataframe",
+    "make_adult_design_matrix",
+    "normalize_adult_column",
+    "prepare_adult_sex_splits",
 ]

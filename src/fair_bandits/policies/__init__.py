@@ -18,6 +18,8 @@ from .synthetic import (
     weighted_linear_update,
 )
 
+from .adult_exp4 import AdultEXP4Policy, AdultFairEXP4Policy
+
 __all__ = [
     "BaseContextualPolicy",
     "LinUCB",
@@ -35,4 +37,6 @@ __all__ = [
     "instantiate_synthetic_policy",
     "weighted_linear_update",
     "weighted_exp4_update",
+    "AdultEXP4Policy",
+    "AdultFairEXP4Policy",
 ]
