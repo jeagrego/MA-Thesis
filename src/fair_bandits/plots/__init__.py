@@ -19,6 +19,14 @@ from .compas_exp4 import (
     prepare_performance_plot_df,
 )
 
+from .compas_cmab import (
+    plot_compas_family_figure_set,
+    plot_compas_final_dot_plots,
+    plot_compas_postprocessing_over_horizon,
+    plot_compas_linucb_inprocessing_average_reward,
+    plot_compas_linucb_postprocessing_average_reward,
+)
+
 from .synthetic_cmab import (
     DEFAULT_POLICY_LABELS,
     DEFAULT_PREPROCESSING_LABELS,
@@ -44,6 +52,13 @@ from .adult_cmab import (
     plot_adult_postprocessing_metric,
     plot_adult_postprocessing_summary,
     plot_adult_preprocessing_fairness,
+    plot_adult_final_dot_plots,
+    plot_adult_postprocessing_over_horizon,
+    plot_adult_family_figure_set,
+    plot_adult_final_dot_plots,
+    plot_adult_postprocessing_over_horizon,
+    plot_adult_linucb_inprocessing_average_reward,
+    plot_adult_linucb_postprocessing_average_reward,
 )
 
 __all__ = [
@@ -83,4 +98,17 @@ __all__ = [
     "plot_adult_postprocessing_metric",
     "plot_adult_postprocessing_summary",
     "plot_adult_preprocessing_fairness",
+    "plot_adult_final_dot_plots",
+    "plot_adult_postprocessing_over_horizon",
+    "plot_adult_family_figure_set",
+    "plot_adult_final_dot_plots",
+    "plot_adult_postprocessing_over_horizon",
+    "plot_compas_family_figure_set",
+    "plot_compas_final_dot_plots",
+    "plot_compas_postprocessing_over_horizon",
+    "plot_compas_linucb_inprocessing_average_reward",
+    "plot_compas_linucb_postprocessing_average_reward",
+    "plot_adult_linucb_inprocessing_average_reward",
+    "plot_adult_linucb_postprocessing_average_reward"
+    
 ]

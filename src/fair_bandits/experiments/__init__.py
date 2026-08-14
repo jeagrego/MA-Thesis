@@ -46,6 +46,7 @@ from .synthetic_preflight import (
 )
 
 from .adult_expert_advice import AdultExpertPool, train_adult_expert_pool
+
 from .adult_runner import (
     ADULT_FAMILY_LABELS,
     ADULT_POLICIES_BY_FAMILY,
@@ -53,6 +54,18 @@ from .adult_runner import (
     load_adult_family_outputs,
     run_adult_family_benchmark,
 )
+
+# Generic aliases for offline classification-derived CMAB benchmarks.
+# These names are used by COMPAS and any future tabular classification benchmark.
+ClassificationExpertPool = AdultExpertPool
+train_classification_expert_pool = train_adult_expert_pool
+
+CLASSIFICATION_FAMILY_LABELS = ADULT_FAMILY_LABELS
+CLASSIFICATION_POLICIES_BY_FAMILY = ADULT_POLICIES_BY_FAMILY
+
+ClassificationBanditParams = AdultBanditParams
+load_classification_family_outputs = load_adult_family_outputs
+run_classification_family_benchmark = run_adult_family_benchmark
 
 __all__ = [
     "ExperimentBundle",
@@ -94,4 +107,11 @@ __all__ = [
     "AdultBanditParams",
     "load_adult_family_outputs",
     "run_adult_family_benchmark",
+    "ClassificationExpertPool",
+    "train_classification_expert_pool",
+    "CLASSIFICATION_FAMILY_LABELS",
+    "CLASSIFICATION_POLICIES_BY_FAMILY",
+    "ClassificationBanditParams",
+    "load_classification_family_outputs",
+    "run_classification_family_benchmark",
 ]

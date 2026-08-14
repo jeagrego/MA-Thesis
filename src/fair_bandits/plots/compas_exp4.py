@@ -1098,6 +1098,122 @@ def plot_cumulative_prediction_error_scale_diagnostic(
 
     return output_path
 
+def plot_average_reward_over_time(
+    temporal_df: pd.DataFrame,
+    *,
+    fig_dir: Path,
+) -> Path:
+    """
+    Plot average reward over time for the COMPAS race-binary EXP4 experiment.
+
+    Average reward corresponds to accuracy in this offline classification-derived
+    bandit setting because the reward is 1 when the selected action matches the
+    observed label and 0 otherwise.
+    """
+    if temporal_df.empty:
+        raise ValueError(
+            "temporal_df is empty. "
+            "Run the benchmark before plotting average reward."
+        )
+
+    metric = "average_reward"
+
+    if metric not in temporal_df.columns:
+        if "avg_reward" in temporal_df.columns:
+            temporal_df = temporal_df.copy()
+            temporal_df["average_reward"] = temporal_df["avg_reward"]
+        else:
+            raise KeyError(
+                f"Column not found: {metric}. "
+                f"Available columns are: {temporal_df.columns.tolist()}"
+            )
+
+    summary = aggregate_temporal_metric(
+        temporal_df,
+        metric,
+    )
+
+    curves = [
+        ("EXP4", "uniform"),
+        ("EXP4", "reweigh_group_label"),
+        ("FairEXP4", "uniform"),
+        ("FairEXP4", "reweigh_group_label"),
+    ]
+
+    fig, ax = plt.subplots(
+        1,
+        1,
+        figsize=(11, 6),
+    )
+
+    fig.suptitle(
+        "COMPAS | sensitive = race binary | EXP4 | Average reward over time",
+        fontweight="bold",
+        y=1.02,
+    )
+
+    for policy, preprocessing in curves:
+        curve = summary[
+            (summary["policy"] == policy)
+            & (summary["preprocessing"] == preprocessing)
+        ].sort_values("t")
+
+        if curve.empty:
+            print(
+                "Missing curve:",
+                policy,
+                preprocessing,
+            )
+            continue
+
+        label = f"{policy} | {friendly_preprocessing(preprocessing)}"
+        style = exp4_curve_style(
+            policy=policy,
+            preprocessing=preprocessing,
+        )
+
+        draw_curve(
+            ax,
+            curve,
+            label=label,
+            **style,
+        )
+
+    ax.set_xlabel("Rounds")
+    ax.set_ylabel("Average reward")
+    ax.set_ylim(0.0, 1.0)
+    ax.grid(
+        True,
+        alpha=0.3,
+    )
+    ax.legend(
+        fontsize=8,
+        loc="lower right",
+    )
+
+    plt.tight_layout()
+
+    fig_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    output_path = (
+        fig_dir
+        / "compas_race_binary_exp4_average_reward_over_time.png"
+    )
+
+    plt.savefig(
+        output_path,
+        dpi=300,
+        bbox_inches="tight",
+    )
+
+    print("Saved:", output_path)
+    plt.show()
+
+    return output_path
+
 def plot_differential_cumulative_prediction_error(
     temporal_df: pd.DataFrame,
     *,

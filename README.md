@@ -1,68 +1,153 @@
 # MASTER THESIS IN COMPUTER SCIENCE
 
-## Assessing Fairness in Decision-Making Algorithms for Contextual Bandit Problems
+## Assessing Fairness in Sequential Decision-Making under Uncertainty with Contextual Multi-Armed Bandits
 
-## Author : Jean-Nicolas Grégoire
+**Author:** Jean-Nicolas Grégoire  
+**Promoter:** Professor Tom Lenaerts
+**Supervisor:** Axel Abels
 
-## Promoter : Professor Tom Lenaerts
+This repository contains the code and notebooks used for my master's thesis on fairness with contextual multi-armed bandits. The project studies how fairness-aware interventions behave when decisions are made sequentially under uncertainty, and whether group disparities can be reduced while preserving predictive utility.
 
-This repository contains the code and notebooks used for my master's thesis on fairness in contextual bandits. It provides reusable Python modules for dataset preparation, policy implementations, experiment runners, metrics, plotting, and the notebooks used to reproduce the thesis experiments and figures.
+The repository provides reusable Python modules for dataset preparation, contextual bandit policies, experiment runners, metrics, plotting, post-processing, statistical tests, and the notebooks used to reproduce the final thesis experiments and figures.
+
+---
 
 ## Repository Layout
 
-- [src/fair_bandits](src/fair_bandits) contains the reusable library code.
-- [notebooks](notebooks) contains the thesis notebooks for Adult, COMPAS, synthetic CMAB, postprocessing, benchmark comparisons, and final figures.
-- [notebooks/results](notebooks/results) stores generated CSV and PNG outputs from notebook runs.
-- [requirement.txt](requirement.txt) lists the project dependencies.
+- [`src/fair_bandits`](src/fair_bandits): reusable library code.
+  - `data`: dataset loading and preprocessing.
+  - `experiments`: experiment runners and replay logic.
+  - `io`: loading, saving, and LaTeX/CSV table export.
+  - `metrics`: utility, fairness, temporal, and statistical metrics.
+  - `plots`: plotting utilities for Adult, COMPAS, and synthetic experiments.
+  - `policies`: contextual bandit policies and fairness-aware variants.
+  - `postprocessing`: group-specific threshold post-processing.
+- [`notebooks`](notebooks): notebooks used for experiments, robustness checks, and figure generation.
+- [`notebooks/results`](notebooks/results): generated notebook outputs such as CSV files and PNG figures.
+- [`results`](results): additional generated outputs from module-based runs.
+- [`requirement.txt`](requirement.txt): project dependencies.
+- [`pyproject.toml`](pyproject.toml): project/package configuration.
 
-## What The Project Studies
+---
 
-The experiments study the trade-off between predictive utility and group fairness in contextual bandit settings. The repository compares standard and fairness-aware policies across multiple benchmarks, including Adult, COMPAS, and synthetic CMAB environments.
+## Recommended Notebooks
 
-## Policies And Baselines
+The cleanest and most recent notebooks are the module-based thesis notebooks:
 
-The codebase currently includes these policy families:
+1. [`notebooks/synthetic_cmab_fairness.ipynb`](notebooks/synthetic_cmab_fairness.ipynb)  
+   Final synthetic CMAB notebook. It evaluates regime-matched fairness robustness across deterministic, stochastic, and adversarial synthetic regimes, including the 80/20 group-imbalance sensitivity analysis.
 
-- LinUCB
-- GroupAwareDPLinUCB / FairLinUCB_DP_GroupAware
-- LinearThompsonSampling
-- GroupAwareDPLinearThompsonSampling / FairLinearThompsonSampling_DP_GroupAware
-- EXP4
-- GroupAwareDPEXP4 / FairEXP4_DP
-- supervised baselines used in the benchmark notebooks
+2. [`notebooks/adult_sex_cmab_fairness.ipynb`](notebooks/adult_sex_cmab_fairness.ipynb)  
+   Final Adult Income experiment using sex as the sensitive attribute. It compares LinUCB, Linear Thompson Sampling, and EXP4 policy families with pre-processing, in-processing, and post-processing fairness interventions. The notebook generates temporal figures, final summary tables, post-processing analyses, and paired statistical tests.
+
+3. [`notebooks/compas_race_binary_fairness.ipynb`](notebooks/compas_race_binary_fairness.ipynb)  
+   Final COMPAS experiment using binary race as the sensitive attribute. It compares LinUCB, Linear Thompson Sampling, and EXP4 policy families with uniform and reweighted preprocessing, fairness-aware in-processing variants, post-processing, final summary tables, and paired statistical tests.
+
+These three notebooks should be treated as the canonical entry points for reproducing the final thesis results.
+
+---
+
+## What the Project Studies
+
+The experiments evaluate fairness in contextual bandit settings. Adult Income, COMPAS, and synthetic environments are reformulated as binary contextual bandit problems:
+
+- each individual or simulated observation is represented by a context vector;
+- the available actions are binary decisions;
+- the reward is equal to 1 when the selected action matches the observed or generated label, and 0 otherwise.
+
+Because Adult and COMPAS are offline classification-derived bandit environments, **average reward is equivalent to accuracy** in those experiments. For these benchmarks, the quantity reported in the thesis and final notebooks is **cumulative prediction error**, not theoretical cumulative regret.
+
+The project evaluates fairness interventions at three levels:
+
+1. **Pre-processing:** group-label reweighting before or during the replay stream.
+2. **In-processing:** demographic-parity-aware corrections of the action-selection rule.
+3. **Post-processing:** group-specific threshold calibration on held-out data.
+
+---
+
+## Policy Families
+
+The codebase includes three main contextual bandit families and fairness-aware variants:
+
+- **LinUCB family**
+  - `LinUCB`
+  - `FairLinUCB` / `FairLinUCB+PP`
+- **Linear Thompson Sampling family**
+  - `LinTS`
+  - `FairLinTS` / `FairLinTS+PP`
+- **EXP4 family**
+  - `EXP4`
+  - `FairEXP4` / `FairEXP4+PP`
+
+Some older notebooks also contain supervised baselines, exploratory comparisons, or earlier versions of the experiments.
+
+---
 
 ## Metrics
 
-Utility and performance:
+### Utility and performance metrics
 
-- Accuracy
-- Utility gap
-- Cumulative regret
+- Average reward
+- Cumulative prediction error
+- UtilityGap
+
+In Adult and COMPAS, average reward corresponds to classification accuracy because the reward is defined as `1(action == y_true)`.
 
 ### Fairness metrics
 
-- Demographic Parity gap (`DP_gap`)
-- True Positive Rate gap (`TPR_gap`)
-- False Positive Rate gap (`FPR_gap`)
-- Equalized Odds gap (`EO_gap`)
-- Positive Predictive Value gap (`PPV_gap`)
+- Demographic Parity Gap (`DP_gap`)
+- True Positive Rate Gap (`TPR_gap`)
+- False Positive Rate Gap (`FPR_gap`)
+- Equalized Odds Gap (`EO_gap`)
+- Positive Predictive Value Gap (`PPV_gap`)
+- UtilityGap
 
-## Notebook Set
+Lower values indicate smaller disparities for the fairness-gap metrics and UtilityGap. Higher average reward indicates better predictive utility.
 
-The notebooks in this repository cover:
+---
 
-1. Adult experiments
-2. COMPAS experiments
-3. COMPAS postprocessing
-4. COMPAS snapshot benchmark
-5. Synthetic CMAB experiments
-6. Final figures and statistical summaries
+## Legacy and Exploratory Notebooks
 
-The synthetic CMAB notebook includes multiple regimes, horizon sweeps, per-seed summaries, confidence intervals, and statistical tests.
+Several older notebooks are retained in the repository for provenance and reproducibility of earlier work, including the experiments prepared for the **MLG Student Days** and intermediate thesis-development stages.
+
+Examples include:
+
+- `fairness2`
+- `adult_experiments.ipynb`
+- `adult_processing_methods_comparison.ipynb`
+- `compas_experiments.ipynb`
+- `compas_postprocessing.ipynb`
+- `compas_snapshot_benchmark.ipynb`
+- `synthetic_cmab_experiments.ipynb`
+- `final_figures.ipynb`
+- `processing_methods_comparison.ipynb`
+
+These notebooks are useful for understanding the development history of the project, but the three notebooks listed in the **Recommended Notebooks** section are the cleanest and latest versions.
+
+---
 
 ## Statistical Analysis
 
-The experiment workflow includes Friedman omnibus tests, pairwise Wilcoxon tests, and Holm correction for multiple comparisons.
+The final workflow uses paired comparisons across random seeds. Pairwise Wilcoxon signed-rank tests are used for paired comparisons, and Holm correction is applied for multiple comparisons.
+
+Temporal plots report mean trajectories across seeds with pointwise confidence intervals. Compact final tables report mean and standard deviation across seeds.
+
+---
+
+## Reproducibility Notes
+
+The final notebooks can either regenerate experiments or load cached outputs, depending on the run flags set inside each notebook. Full runs may take substantial time, especially for multi-seed Adult, COMPAS, and synthetic experiments.
+
+Generated outputs are written to the configured results directories and include:
+
+- temporal trajectory CSV files;
+- endpoint summary CSV files;
+- post-processing result CSV files;
+- paired statistical-test tables;
+- LaTeX tables for Overleaf;
+- PNG figures for the main thesis results and appendix sections.
+
+---
 
 ## Requirements
 
@@ -73,3 +158,15 @@ Install dependencies with:
 ```bash
 pip install -r requirement.txt
 ```
+
+---
+
+## Suggested Workflow
+
+A typical workflow is:
+
+1. Create and activate a virtual environment.
+2. Install the dependencies.
+3. Open one of the three recommended notebooks.
+4. Select whether to regenerate experiments or load cached results.
+5. Run the notebook to reproduce figures, tables, and statistical summaries.
