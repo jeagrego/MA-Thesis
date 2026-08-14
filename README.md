@@ -3,7 +3,7 @@
 ## Assessing Fairness in Sequential Decision-Making under Uncertainty with Contextual Multi-Armed Bandits
 
 **Author:** Jean-Nicolas Grégoire  
-**Promoter:** Professor Tom Lenaerts
+**Promoter:** Professor Tom Lenaerts  
 **Supervisor:** Axel Abels
 
 This repository contains the code and notebooks used for my master's thesis on fairness with contextual multi-armed bandits. The project studies how fairness-aware interventions behave when decisions are made sequentially under uncertainty, and whether group disparities can be reduced while preserving predictive utility.
