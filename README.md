@@ -3,7 +3,7 @@
 ## Assessing Fairness in Sequential Decision-Making under Uncertainty with Contextual Multi-Armed Bandits
 
 **Author:** Jean-Nicolas Grégoire  
-**Promoter:** Professor Tom Lenaerts  
+**Promoter:** Professor Tom Lenaerts
 **Supervisor:** Axel Abels
 
 This repository contains the code and notebooks used for my master's thesis on fairness with contextual multi-armed bandits. The project studies how fairness-aware interventions behave when decisions are made sequentially under uncertainty, and whether group disparities can be reduced while preserving predictive utility.
@@ -53,9 +53,16 @@ The experiments evaluate fairness in contextual bandit settings. Adult Income, C
 
 - each individual or simulated observation is represented by a context vector;
 - the available actions are binary decisions;
-- the reward is equal to 1 when the selected action matches the observed or generated label, and 0 otherwise.
+- in the Adult and COMPAS experiments, the reward is equal to 1 when the selected action matches the recoded binary label, and 0 otherwise.
 
-Because Adult and COMPAS are offline classification-derived bandit environments, **average reward is equivalent to accuracy** in those experiments. For these benchmarks, the quantity reported in the thesis and final notebooks is **cumulative prediction error**, not theoretical cumulative regret.
+The meaning of class 1 is dataset-specific and must not be confused with a reward of 1:
+
+| Dataset | Original outcome | Recoded label and action semantics | Reward |
+| --- | --- | --- | --- |
+| Adult Income | Annual income category | `y = 1` and `a = 1` denote income `>50K`; `y = 0` and `a = 0` denote income `<=50K`. | `r = 1` if `a == y`, and `r = 0` otherwise. |
+| COMPAS | `two_year_recid`, where 1 denotes recidivism | The code applies `y = 1 - two_year_recid`. Consequently, `y = 1` and `a = 1` denote **non-recidivism**, whereas `y = 0` and `a = 0` denote recidivism. | `r = 1` if `a == y`, and `r = 0` otherwise. |
+
+Thus, a value of 1 has three distinct interpretations: it denotes the positive recoded class when used as a label, the prediction of that class when used as an action, and a correct prediction when used as a reward. Because Adult and COMPAS are offline classification-derived bandit environments, **average reward is equivalent to accuracy** in those experiments. The final analyses report average reward together with the selected fairness gaps and UtilityGap; cumulative prediction error is retained only in legacy or exploratory outputs.
 
 The project evaluates fairness interventions at three levels:
 
@@ -88,8 +95,8 @@ Some older notebooks also contain supervised baselines, exploratory comparisons,
 ### Utility and performance metrics
 
 - Average reward
-- Cumulative prediction error
 - UtilityGap
+- (Cumulative prediction error)
 
 In Adult and COMPAS, average reward corresponds to classification accuracy because the reward is defined as `1(action == y_true)`.
 

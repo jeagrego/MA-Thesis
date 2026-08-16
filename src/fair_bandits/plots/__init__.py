@@ -61,6 +61,13 @@ from .adult_cmab import (
     plot_adult_linucb_postprocessing_average_reward,
 )
 
+from .tradeoff import (
+    plot_synthetic_tradeoff_set,
+    plot_real_dataset_tradeoff_set,
+    synthetic_final_tradeoff_source,
+    real_dataset_final_tradeoff_source,
+)
+
 __all__ = [
     "plot_average_reward_over_time",
     "plot_rolling_reward",
@@ -110,5 +117,9 @@ __all__ = [
     "plot_compas_linucb_postprocessing_average_reward",
     "plot_adult_linucb_inprocessing_average_reward",
     "plot_adult_linucb_postprocessing_average_reward"
+    "plot_synthetic_tradeoff_set",
+    "plot_real_dataset_tradeoff_set",
+    "synthetic_final_tradeoff_source",
+    "real_dataset_final_tradeoff_source",
     
 ]
