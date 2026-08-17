@@ -213,15 +213,15 @@ def make_imbalanced_synthetic_cmab_dataset(
     """
     Generate an exactly imbalanced synthetic CMAB stream.
 
-    The base synthetic generator is called on an oversized sequence. The earliest
-    required observations from each group are retained, and the selected indices
-    are sorted to preserve the original temporal order.
+    The group sequence is constructed first with exactly the requested
+    majority/minority counts and then randomly shuffled. Contexts and reward
+    probabilities are subsequently generated in this temporal order.
 
-    Supported regimes:
-    - stationary_deterministic
-    - stationary_stochastic
-    - adversarial_switching
+    This preserves the requested global group imbalance while keeping the
+    groups distributed throughout the whole horizon. It also preserves the
+    temporal structure of time-dependent regimes such as adversarial_switching.
     """
+
     valid_regimes = {
         "stationary_deterministic",
         "stationary_stochastic",
@@ -237,83 +237,140 @@ def make_imbalanced_synthetic_cmab_dataset(
     if not 0.0 < minority_fraction < 1.0:
         raise ValueError("minority_fraction must be between 0 and 1.")
 
-    n_minority = int(round(int(T) * float(minority_fraction)))
-    n_majority = int(T) - n_minority
+    majority_value = int(majority_group)
+    minority_value = int(minority_group)
 
-    source_T = max(
-        3 * int(T),
-        1000,
-    )
-
-    base_dataset = None
-    selected_indices = None
-
-    for attempt in range(max_attempts):
-        candidate = make_synthetic_cmab_dataset(
-            T=source_T,
-            d=d,
-            regime=regime,
-            seed=int(seed) + attempt * 100_003,
-            **config_overrides,
+    if majority_value == minority_value:
+        raise ValueError(
+            "majority_group and minority_group must be different."
         )
 
-        groups = np.asarray(candidate["group"]).astype(str)
+    if {majority_value, minority_value} != {0, 1}:
+        raise ValueError("Synthetic sensitive groups must be 0 and 1.")
 
-        majority_indices = np.flatnonzero(groups == majority_group)[:n_majority]
-        minority_indices = np.flatnonzero(groups == minority_group)[:n_minority]
+    T = int(T)
 
-        if (
-            len(majority_indices) == n_majority
-            and len(minority_indices) == n_minority
-        ):
-            base_dataset = candidate
-            selected_indices = np.sort(
-                np.concatenate(
-                    [
-                        majority_indices,
-                        minority_indices,
-                    ]
-                )
-            )
-            break
+    n_minority = int(round(T * float(minority_fraction)))
+    n_majority = T - n_minority
 
-        source_T *= 2
-
-    if base_dataset is None or selected_indices is None:
-        raise RuntimeError(
-            "Unable to construct the requested imbalanced synthetic stream."
-        )
-
-    output = dict(base_dataset)
-
-    output["X"] = np.asarray(base_dataset["X"])[selected_indices].copy()
-    output["group"] = np.asarray(base_dataset["group"])[selected_indices].copy()
-    output["y_opt"] = np.asarray(base_dataset["y_opt"])[selected_indices].copy()
-
-    output["df"] = (
-        base_dataset["df"]
-        .iloc[selected_indices]
-        .reset_index(drop=True)
-        .copy()
+    # Create the same synthetic generator as before.
+    cfg = SyntheticCMABConfig(
+        T=T,
+        d=int(d),
+        regime=regime,
+        **config_overrides,
     )
 
-    output["df"]["t"] = np.arange(len(output["df"]))
+    gen = SyntheticCMABGenerator(
+        config=cfg,
+        seed=int(seed),
+    )
+
+    group_sequence = np.concatenate(
+        [
+            np.full(
+                n_majority,
+                majority_value,
+                dtype=int,
+            ),
+            np.full(
+                n_minority,
+                minority_value,
+                dtype=int,
+            ),
+        ]
+    )
+
+    group_rng = np.random.default_rng(
+        np.random.SeedSequence(
+            [
+                int(seed),
+                T,
+                n_minority,
+            ]
+        )
+    )
+
+    group_rng.shuffle(group_sequence)
+
+    rows = []
+
+    X = np.zeros(
+        (T, int(d)),
+        dtype=np.float64,
+    )
+
+    y_opt = np.zeros(
+        T,
+        dtype=int,
+    )
+
+    for t, g in enumerate(group_sequence):
+
+        g = int(g)
+
+        x = gen._sample_context(
+            group=g,
+        )
+
+        probs = gen.reward_probabilities(
+            x=x,
+            group=g,
+            t=t,
+        )
+
+        oracle_action = int(
+            np.argmax(probs)
+        )
+
+        oracle_prob = float(
+            probs[oracle_action]
+        )
+
+        X[t] = x
+        y_opt[t] = oracle_action
+
+        rows.append(
+            {
+                "t": int(t),
+                "group": g,
+                "oracle_action": oracle_action,
+                "oracle_prob": oracle_prob,
+                "p_action_0": float(probs[0]),
+                "p_action_1": float(probs[1]),
+            }
+        )
+
+    output = {
+        "df": pd.DataFrame(rows),
+        "X": X,
+        "group": group_sequence.copy(),
+        "y_opt": y_opt,
+        "config": asdict(cfg),
+        "generator": gen,
+    }
 
     observed_groups, observed_counts = np.unique(
-        np.asarray(output["group"]).astype(str),
+        output["group"].astype(str),
         return_counts=True,
     )
 
-    observed = dict(zip(observed_groups, observed_counts))
+    observed = dict(
+        zip(
+            observed_groups,
+            observed_counts,
+        )
+    )
 
     expected = {
-        majority_group: n_majority,
-        minority_group: n_minority,
+        str(majority_value): n_majority,
+        str(minority_value): n_minority,
     }
 
     if observed != expected:
         raise AssertionError(
-            f"Observed counts {observed} do not match expected counts {expected}."
+            f"Observed counts {observed} "
+            f"do not match expected counts {expected}."
         )
 
     return output
